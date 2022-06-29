@@ -44,6 +44,11 @@ class DataTrainArguments:
 
     n_gpu: int = field(default=1)
     local_rank: int = field(default=-1)
+    
+@dataclass
+class JointDataTrainArguments(DataTrainArguments):
+    title_path: str = field(default="/home/jupyter/jointly_rec_and_search/datasets/rec_search/search/collection_title.tsv")
+    training_path: str = field(default="/home/jupyter/jointly_rec_and_search/datasets/rec_search/joint_1pos_1neg.train.tsv")
 
 @dataclass 
 class CETrainArguments(DataTrainArguments):

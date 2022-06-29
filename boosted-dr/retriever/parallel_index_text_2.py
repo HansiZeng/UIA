@@ -57,6 +57,12 @@ def main(args):
     meta = {"text_ids": text_ids, "num_embeddings": len(text_ids)}
     with open(os.path.join(args.index_dir, "meta.pkl"), "wb") as f:
         pickle.dump(meta, f)
+        
+    # remove embs, ids
+    for i in range(nranks):
+        for chunk_idx in range(num_chunks):
+            os.remove(os.path.join(args.index_dir,"embs_{}_{}.npy".format(i, chunk_idx)))
+            os.remove(os.path.join(args.index_dir,"ids_{}_{}.npy".format(i, chunk_idx)))
 
 if __name__ == "__main__":
     args = get_args()
