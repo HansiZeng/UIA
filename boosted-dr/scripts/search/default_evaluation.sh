@@ -1,7 +1,22 @@
 #!/bin/bash
 
-RANKING_PREFIX="/work/hzeng_umass_edu/experiments/msmarco/boosted-dr/experiment_04-30_143651/valid_runs/checkpoint_250000"
-#RANKING_PREFIX="/work/hzeng_umass_edu/experiments/msmarco/boosted-dr/experiment_05-13_032123/merge_2_runs/top-1000.sum"
-METRIC_PATH=$RANKING_PREFIX"_metric.log"
+QRELS_PATH_1="/home/jupyter/jointly_rec_and_search/datasets/rec_search/search/qrels.test.tsv"
+QRELS_PATH_2="/home/jupyter/jointly_rec_and_search/datasets/rec_search/search/qrels.test.head.tsv"
+QRELS_PATH_3="/home/jupyter/jointly_rec_and_search/datasets/rec_search/search/qrels.test.torso.tsv"
+QRELS_PATH_4="/home/jupyter/jointly_rec_and_search/datasets/rec_search/search/qrels.test.tail.tsv"
 
-python evaluation/retrieval_evaluator.py --ranking_prefix=$RANKING_PREFIX >> $METRIC_PATH
+
+RANKING_PATH_1="/home/jupyter/jointly_rec_and_search/experiments/search/cl-drd/experiment_06-30_133644/runs/checkpoint_latest.test.run"
+RANKING_PATH_2="/home/jupyter/jointly_rec_and_search/experiments/search/cl-drd/experiment_06-30_133644/runs/checkpoint_latest.test.head.run"
+RANKING_PATH_3="/home/jupyter/jointly_rec_and_search/experiments/search/cl-drd/experiment_06-30_133644/runs/checkpoint_latest.test.torso.run"
+RANKING_PATH_4="/home/jupyter/jointly_rec_and_search/experiments/search/cl-drd/experiment_06-30_133644/runs/checkpoint_latest.test.tail.run"
+
+# 3, evaluation
+echo "================================================ standard qrel ================================================"
+python evaluation/retrieval_evaluator.py --qrels_path=$QRELS_PATH_1 --ranking_path=$RANKING_PATH_1
+echo "================================================ standard qrel exclude ================================================"
+python evaluation/retrieval_evaluator.py --qrels_path=$QRELS_PATH_2 --ranking_path=$RANKING_PATH_2
+echo "================================================ ext_qrel ================================================"
+python evaluation/retrieval_evaluator.py --qrels_path=$QRELS_PATH_3 --ranking_path=$RANKING_PATH_3
+echo "================================================ ext_qrel exclude ================================================"
+python evaluation/retrieval_evaluator.py --qrels_path=$QRELS_PATH_4 --ranking_path=$RANKING_PATH_4

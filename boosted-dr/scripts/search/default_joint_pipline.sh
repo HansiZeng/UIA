@@ -1,19 +1,19 @@
 #!/bin/bash
 
-PRETRAINED_PATH="/home/jupyter/jointly_rec_and_search/experiments/search/cl-drd/experiment_06-30_133644/models/checkpoint_latest"
-INDEX_DIR="/home/jupyter/jointly_rec_and_search/experiments/search/cl-drd/experiment_06-30_133644/index/"
-INDEX_PATH="/home/jupyter/jointly_rec_and_search/experiments/search/cl-drd/experiment_06-30_133644/index/checkpoint_latest.index"
-OUTPUT_PATH="/home/jupyter/jointly_rec_and_search/experiments/search/cl-drd/experiment_06-30_133644/runs/checkpoint_latest"
+PRETRAINED_PATH="/home/jupyter/jointly_rec_and_search/experiments/search/joint_cl-drd/experiment_06-30_145954/models/checkpoint_latest"
+INDEX_DIR="/home/jupyter/jointly_rec_and_search/experiments/search/joint_cl-drd/experiment_06-30_145954/index/"
+INDEX_PATH="/home/jupyter/jointly_rec_and_search/experiments/search/joint_cl-drd/experiment_06-30_145954/index/checkpoint_latest.index"
+OUTPUT_PATH="/home/jupyter/jointly_rec_and_search/experiments/search/joint_cl-drd/experiment_06-30_145954/runs/checkpoint_latest"
 
 QRELS_PATH_1="/home/jupyter/jointly_rec_and_search/datasets/rec_search/search/qrels.test.tsv"
 QRELS_PATH_2="/home/jupyter/jointly_rec_and_search/datasets/rec_search/search/qrels.test.head.tsv"
 QRELS_PATH_3="/home/jupyter/jointly_rec_and_search/datasets/rec_search/search/qrels.test.torso.tsv"
 QRELS_PATH_4="/home/jupyter/jointly_rec_and_search/datasets/rec_search/search/qrels.test.tail.tsv"
 
-RANKING_PATH_1="/home/jupyter/jointly_rec_and_search/experiments/search/cl-drd/experiment_06-30_133644/runs/checkpoint_latest.test.run"
-RANKING_PATH_2="/home/jupyter/jointly_rec_and_search/experiments/search/cl-drd/experiment_06-30_133644/runs/checkpoint_latest.test.head.run"
-RANKING_PATH_3="/home/jupyter/jointly_rec_and_search/experiments/search/cl-drd/experiment_06-30_133644/runs/checkpoint_latest.test.torso.run"
-RANKING_PATH_4="/home/jupyter/jointly_rec_and_search/experiments/search/cl-drd/experiment_06-30_133644/runs/checkpoint_latest.test.tail.run"
+RANKING_PATH_1="/home/jupyter/jointly_rec_and_search/experiments/search/joint_cl-drd/experiment_06-30_145954/runs/checkpoint_latest.test.run"
+RANKING_PATH_2="/home/jupyter/jointly_rec_and_search/experiments/search/joint_cl-drd/experiment_06-30_145954/runs/checkpoint_latest.test.head.run"
+RANKING_PATH_3="/home/jupyter/jointly_rec_and_search/experiments/search/joint_cl-drd/experiment_06-30_145954/runs/checkpoint_latest.test.torso.run"
+RANKING_PATH_4="/home/jupyter/jointly_rec_and_search/experiments/search/joint_cl-drd/experiment_06-30_145954/runs/checkpoint_latest.test.tail.run"
 
 # 1, index
 python -m torch.distributed.launch --nproc_per_node=4 retriever/parallel_index_text_1.py \

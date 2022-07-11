@@ -4,6 +4,8 @@ runs/
 datasets/
 indexes/
 pretrained_models/
+preprocess/rec_compl/data/
+preprocess/rec_compl/dataset/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -129,9 +129,11 @@ if __name__ == "__main__":
     from transformers import AutoTokenizer
     import torch
 
-    queries_path = "/home/jupyter/jointly_rec_and_search/datasets/rec_search/rec/anchors.train.tsv"
-    passages_path = "/home/jupyter/jointly_rec_and_search/datasets/rec_search/search/collection.tsv"
-    training_path = "/home/jupyter/jointly_rec_and_search/datasets/rec_search/rec/1pos_1neg.train.tsv"
+    queries_path = "/home/jupyter/jointly_rec_and_search/datasets/rec_search/search_compl/queries.train.tsv"
+    #queries_path = "/home/jupyter/jointly_rec_and_search/datasets/rec_search/search_compl/collection_title.tsv"
+    passages_path = "/home/jupyter/jointly_rec_and_search/datasets/rec_search/search_compl/collection.tsv"
+    training_path = "/home/jupyter/jointly_rec_and_search/datasets/rec_search/search_compl/1pos_1neg.train.tsv"
+    #training_path = "/home/jupyter/jointly_rec_and_search/datasets/rec_search/search_compl/anchor/1pos_1neg.compl.train.tsv"
     tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
    
     dataset = TripleDataset.create_from_triple_file(queries_path, passages_path, training_path, tokenizer, max_query_len=30, max_passage_len=64)
