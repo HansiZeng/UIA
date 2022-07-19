@@ -14,4 +14,5 @@ from .ce_nway_dataset import CENwayDataset
 from .boosted_ndcg_nway_dataset import BoostedNDCGNwayDataset
 from .triple_dataset import TripleDataset
 from .joint_triple_dataset import JointTripleDataset
+from .triple_group_dataset import TripleGroupDataset
 

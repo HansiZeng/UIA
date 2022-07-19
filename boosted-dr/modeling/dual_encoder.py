@@ -1,7 +1,11 @@
 import os 
+import math
 
 import torch
 import torch.nn as nn 
+import torch_geometric
+from torch_scatter import scatter_add
+
 from transformers import (AutoTokenizer, AutoModel, AdamW, get_linear_schedule_with_warmup)
 from losses import ContrastiveLoss
 
@@ -13,8 +17,11 @@ class DualEncoder(nn.Module):
         self.model_name_or_path = self.model_args.model_name_or_path
         self.use_compress = self.model_args.use_compress 
         self.apply_tanh = self.model_args.apply_tanh
+        self.independent_encoders = self.model_args.independent_encoders
 
         self.bert = AutoModel.from_pretrained(self.model_name_or_path)
+        if self.independent_encoders:
+            self.query_bert = AutoModel.from_pretrained(self.model_name_or_path)
         if self.use_compress:
             self.compress_dim = self.model_args.compress_dim
             self.compressor = nn.Linear(self.bert.config.hidden_size, self.compress_dim)
@@ -38,7 +45,10 @@ class DualEncoder(nn.Module):
         return logits
 
     def query_embs(self, queries):
-        query_reps = self.bert(**queries)[0][:, 0, :] 
+        if self.independent_encoders:
+            query_reps = self.query_bert(**queries)[0][:, 0, :] 
+        else:
+            query_reps = self.bert(**queries)[0][:, 0, :] 
         
         if self.use_compress:
             query_reps = self.compressor(query_reps)
@@ -123,3 +133,152 @@ class ContrastiveDualEncoder(DualEncoder):
         passage_reps = passage_reps.view(bz*nway, dim)
         
         return self.loss_fn(query_reps, passage_reps)
+
+    
+class _GraphDualEncoder(DualEncoder):
+    def __init__(self, model_args):
+        super().__init__(model_args)
+        self.loss_fn = ContrastiveLoss()
+        
+        
+    def _detach_record(self, anchor_reps, pos_reps, neg_reps):
+        # for recording
+        detach_anchor_reps = anchor_reps.detach()
+        detach_pos_reps = pos_reps.detach() #[bz, hdim]
+        detach_neg_reps = neg_reps.detach()
+        
+        pos_scores = torch.sum(detach_anchor_reps*detach_pos_reps, dim=-1)
+        neg_scores = torch.sum(detach_anchor_reps*detach_neg_reps, dim=-1)
+        all_scores = detach_anchor_reps @ torch.cat([detach_pos_reps, detach_neg_reps]).t()
+        
+        row = len(pos_scores)
+        col = 2*row
+        indice_pairs = [(i, j) for i in range(row) for j in range(col) if i != j]
+        indices = torch.LongTensor([i*col + j for (i, j) in indice_pairs]).to(device=pos_scores.device)
+        all_neg_score = torch.mean(torch.index_select(all_scores.view(-1), 0, indices))
+        
+        score_diffs = (pos_scores - neg_scores).detach()
+        
+        records = {"train/pos_score": pos_scores.cpu().mean().item(), "train/hard_neg_score": neg_scores.cpu().mean().item(),
+                  "train/all_neg_score": all_neg_score.cpu().item(), "train/score_diff": score_diffs.cpu().mean().item()}
+        
+        return records
+        
+    
+    def forward(self, anchors, pos_passages, neg_passages, anchor_indices):
+        """
+        Args:
+            anchors: BatchEncoding with [bz, seq_len]
+            pos_passages: BatchEncoding with [total_passage_num, seq_len]
+            neg_passages: BatchEncoding with [total_passage_num, seq_len]
+            anchor_indices: [total_passage_num]
+            
+        Returns:
+            loss: 
+            records:
+        """
+        anchor_reps = self.query_embs(anchors) #[bz, hdim]
+        pos_passage_reps = self.passage_embs(pos_passages)
+        neg_passage_reps = self.passage_embs(neg_passages)
+        
+        expand_anchor_reps = torch.index_select(anchor_reps, 0, anchor_indices) #[total_passage_num, hdim]
+        pos_logits = torch.sum(expand_anchor_reps*pos_passage_reps, dim=-1)
+        neg_logits = torch.sum(expand_anchor_reps*neg_passage_reps, dim=-1)
+        
+        pos_probs = torch_geometric.utils.softmax(pos_logits, anchor_indices).view(-1,1)
+        neg_probs = torch_geometric.utils.softmax(neg_logits, anchor_indices).view(-1,1)
+        
+        weighted_pos_reps = pos_passage_reps * pos_probs
+        weighted_neg_reps = neg_passage_reps * neg_probs
+        
+        pos_reps = scatter_add(weighted_pos_reps, anchor_indices, dim=0) #[bz, hdim]
+        neg_reps = scatter_add(weighted_neg_reps, anchor_indices, dim=0) #[bz, hdim]
+        
+        assert pos_reps.shape[0] == neg_reps.shape[0]
+        dest_indices = torch.LongTensor([[idx, idx+len(pos_reps)] for idx in range(len(pos_reps))]).view(-1).to(device=pos_reps.device)
+        tmp_all_reps = torch.cat([pos_reps, neg_reps])
+        all_reps = torch.index_select(tmp_all_reps, 0, dest_indices) #[2*bz, hdim]
+        loss = self.loss_fn(anchor_reps, all_reps)
+        
+        records = self._detach_record(anchor_reps, pos_reps, neg_reps)
+        
+        return loss, records
+    
+class GraphDualEncoder(DualEncoder):
+    def __init__(self, model_args):
+        super().__init__(model_args)
+        self.loss_fn = ContrastiveLoss()
+        self.W = nn.Linear(768, 768, bias=False)
+        self.register_parameter("a", nn.Parameter(torch.empty(1, 768*2)))
+        
+        self.reset_parameters()
+        
+    def reset_parameters(self):
+        nn.init.kaiming_uniform_(self.a, a=math.sqrt(5))
+        
+    def _detach_record(self, anchor_reps, pos_reps, neg_reps):
+        # for recording
+        detach_anchor_reps = anchor_reps.detach()
+        detach_pos_reps = pos_reps.detach() #[bz, hdim]
+        detach_neg_reps = neg_reps.detach()
+        
+        pos_scores = torch.sum(detach_anchor_reps*detach_pos_reps, dim=-1)
+        neg_scores = torch.sum(detach_anchor_reps*detach_neg_reps, dim=-1)
+        all_scores = detach_anchor_reps @ torch.cat([detach_pos_reps, detach_neg_reps]).t()
+        
+        row = len(pos_scores)
+        col = 2*row
+        indice_pairs = [(i, j) for i in range(row) for j in range(col) if i != j]
+        indices = torch.LongTensor([i*col + j for (i, j) in indice_pairs]).to(device=pos_scores.device)
+        all_neg_score = torch.mean(torch.index_select(all_scores.view(-1), 0, indices))
+        
+        score_diffs = (pos_scores - neg_scores).detach()
+        
+        records = {"train/pos_score": pos_scores.cpu().mean().item(), "train/hard_neg_score": neg_scores.cpu().mean().item(),
+                  "train/all_neg_score": all_neg_score.cpu().item(), "train/score_diff": score_diffs.cpu().mean().item()}
+        
+        return records
+        
+    
+    def forward(self, anchors, pos_passages, neg_passages, anchor_indices):
+        """
+        Args:
+            anchors: BatchEncoding with [bz, seq_len]
+            pos_passages: BatchEncoding with [total_passage_num, seq_len]
+            neg_passages: BatchEncoding with [total_passage_num, seq_len]
+            anchor_indices: [total_passage_num]
+            
+        Returns:
+            loss: 
+            records:
+        """
+        anchor_reps = self.query_embs(anchors) #[bz, hdim]
+        pos_passage_reps = self.passage_embs(pos_passages)
+        neg_passage_reps = self.passage_embs(neg_passages)
+        
+        expand_anchor_reps = torch.index_select(anchor_reps, 0, anchor_indices) #[total_passage_num, hdim]
+        pos_logits = torch.sum(torch.cat([self.W(expand_anchor_reps), self.W(pos_passage_reps)], dim=-1) * self.a, dim=-1)
+        neg_logits = torch.sum(torch.cat([self.W(expand_anchor_reps), self.W(neg_passage_reps)], dim=-1) * self.a, dim=-1)
+        pos_logits = nn.functional.leaky_relu(pos_logits)
+        neg_logits = nn.functional.leaky_relu(neg_logits)
+        
+        pos_probs = torch_geometric.utils.softmax(pos_logits, anchor_indices).view(-1,1)
+        neg_probs = torch_geometric.utils.softmax(neg_logits, anchor_indices).view(-1,1)
+        
+        weighted_pos_reps = pos_passage_reps * pos_probs
+        weighted_neg_reps = neg_passage_reps * neg_probs
+        
+        pos_reps = scatter_add(weighted_pos_reps, anchor_indices, dim=0) #[bz, hdim]
+        neg_reps = scatter_add(weighted_neg_reps, anchor_indices, dim=0) #[bz, hdim]
+        
+        assert pos_reps.shape[0] == neg_reps.shape[0]
+        dest_indices = torch.LongTensor([[idx, idx+len(pos_reps)] for idx in range(len(pos_reps))]).view(-1).to(device=pos_reps.device)
+        tmp_all_reps = torch.cat([pos_reps, neg_reps])
+        all_reps = torch.index_select(tmp_all_reps, 0, dest_indices) #[2*bz, hdim]
+        loss = self.loss_fn(anchor_reps, all_reps)
+        
+        records = self._detach_record(anchor_reps, pos_reps, neg_reps)
+        
+        return loss, records
+          
+    

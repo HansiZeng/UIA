@@ -4,16 +4,17 @@ from typing import Union, Optional
 
 @dataclass
 class ModelArguments:
-    model_name_or_path: str = field(default="sebastian-hofstaetter/distilbert-dot-tas_b-b256-msmarco")
+    model_name_or_path: str = field(default="distilbert-base-uncased")
     use_compress: bool = field(default=False)
     compress_dim: int = field(default=768)
     apply_tanh: bool = field(default=False, metadata={"help": "Apply the tanh activiation on the output vector."})
+    independent_encoders: bool = field(default=False)
 
 @dataclass
 class DataTrainArguments:
-    queries_path: str = field(default="/home/jupyter/jointly_rec_and_search/datasets/rec_search/search/queries.train.tsv")
-    collection_path: str = field(default="/home/jupyter/jointly_rec_and_search/datasets/rec_search/search/collection.tsv")
-    training_path: str = field(default="/home/jupyter/jointly_rec_and_search/datasets/rec_search/search/1pos_1neg.train.tsv")
+    queries_path: str = field(default="")
+    collection_path: str = field(default="")
+    training_path: str = field(default="")
 
     experiment_folder: str  = field(default="")
     run_folder: str = field(default="experiment")
@@ -63,8 +64,8 @@ class BoostedTrainArguments(DataTrainArguments):
     
 @dataclass
 class RetrievalArguments:
-    passages_path: str = field(default="/home/jupyter/jointly_rec_and_search/datasets/rec_search/search/collection.tsv")
-    index_dir: str =  field(default="/mnt/nfs/scratch1/hzeng/my-msmarco-passage/experiments/multistep-curriculum/experiment_01-29_230126/index/")
+    passages_path: str = field(default="")
+    index_dir: str =  field(default="")
     tokenizer_name_or_path: str = field(default="distilbert-base-uncased")
     max_length: int = field(default=256)
     is_query: bool = field(default=False)
