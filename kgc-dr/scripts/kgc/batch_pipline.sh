@@ -1,11 +1,11 @@
 #!/bin/bash
 
-EXPERIMENT_FORDER="/home/jupyter/jointly_rec_and_search/experiments/rec_compl/cl-drd"
+EXPERIMENT_FORDER="/home/jupyter/jointly_rec_and_search/experiments/kgc"
 TMP_RECORD="${EXPERIMENT_FORDER}/temp_record.log"
 
-ARELS_PATH="/home/jupyter/jointly_rec_and_search/datasets/rec_search/rec_compl/arels.compl.test.tsv"
-ANCHORS_PATH="/home/jupyter/jointly_rec_and_search/datasets/rec_search/rec_compl/anchors_title_catalog.test.tsv"
-PASSAGE_PATH="/home/jupyter/jointly_rec_and_search/datasets/rec_search/rec_compl/collection_title_catalog.tsv"
+ARELS_PATH="/home/jupyter/jointly_rec_and_search/datasets/kgc/arels.compl.test.tsv"
+ANCHORS_PATH="/home/jupyter/jointly_rec_and_search/datasets/kgc/test/anchors.test.tsv"
+PASSAGE_PATH="/home/jupyter/jointly_rec_and_search/datasets/kgc/collection_title_catalog.tsv"
 
 echo "arels_path: ${ARELS_PATH}" > $TMP_RECORD
 echo "anchors_path: ${ANCHORS_PATH}" >> $TMP_RECORD
@@ -31,12 +31,13 @@ python -m torch.distributed.launch --nproc_per_node=2 retriever/parallel_index_t
                                     --pretrained_path=$PRETRAINED_PATH \
                                     --passages_path=$PASSAGE_PATH \
                                     --index_dir=$INDEX_DIR \
-                                    --batch_size=256 \
+                                    --batch_size=512 \
+                                    --max_length=256
 
 python retriever/parallel_index_text_2.py --pretrained_path=$PRETRAINED_PATH \
                                 --passages_path=$PASSAGE_PATH \
                                 --index_dir=$INDEX_DIR \
-                                --batch_size=256 \
+                                --batch_size=512 \
 
 
 # 2, retrieval

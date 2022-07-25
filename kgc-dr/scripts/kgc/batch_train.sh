@@ -1,5 +1,5 @@
 #!/bin/bash 
-
+e
 
 a2sp_paths=("None" "/home/jupyter/jointly_rec_and_search/datasets/kgc/train/bm25_neg/max5_triples.a2sp.rnd.tsv")
 q2a_paths=("None" "/home/jupyter/jointly_rec_and_search/datasets/kgc/train/bm25_neg/max5_triples.q2a.tsv")

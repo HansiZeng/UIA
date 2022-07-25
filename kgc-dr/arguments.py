@@ -63,7 +63,7 @@ class RetrievalArguments:
     top_k: int = field(default=1000)
     output_path: Optional[str] = field(default=None)
     queries_path: Optional[str] = field(default=None)
-    max_head_text_len: int = field(default=128)
+    query_max_len: int = field(default=256)
     index_path: Optional[str] = field(default=None)
 
     n_gpu: int = field(default=1)

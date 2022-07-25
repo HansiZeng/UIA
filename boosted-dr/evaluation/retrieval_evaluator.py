@@ -71,7 +71,7 @@ class RankingEvaluator():
                 self._output_per_query_metrics(qidx_to_qid, qrels, per_query_metrics_path, rr_per_candidate_depth, recall_per_candidate_depth, 
                                                 ndcg_per_candidate_depth)
 
-            return local_dict, (rr_per_candidate_depth, recall_per_candidate_depth, ndcg_per_candidate_depth)
+            return local_dict, (rr_per_candidate_depth, recall_per_candidate_depth, ndcg_per_candidate_depth), qidx_to_qid, qrels
         else:
             local_dict = self._calculate_metrics_plain(qid_to_ranklist, self.qid_to_relevant_data, binarization_point=2.0 if self.is_trec else 1.)
             return local_dict
@@ -306,7 +306,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print("qrels_path = {} \n raning_path = {}".format(args.qrels_path, args.ranking_path))
-    qrels_path = "/work/hzeng_umass_edu/datasets/msmarco-passage/qrels.train.tsv"
     evaluator = RankingEvaluator(args.qrels_path, is_trec=False, show_progress_bar=True)
     local_dict = evaluator.compute_metrics(args.ranking_path, return_per_query=False)
     print(local_dict)
