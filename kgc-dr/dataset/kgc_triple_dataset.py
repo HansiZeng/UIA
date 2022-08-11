@@ -158,6 +158,121 @@ class KGCTripleDataset(torch.utils.data.Dataset):
                             train_examples.append((hid, reltid, negtid, relation))
                             
         return cls(eid_to_entity, eid_to_entity, train_examples, tokenizer, max_head_text_len, max_tail_text_len)
+    
+    @classmethod
+    def create_from_search_task_files(cls, entites_path, tokenizer, max_head_text_len, max_tail_text_len, 
+                                     train_q2p_path, q2p_path=None, p2sp_path=None, p2cp_path=None,
+                                     rank=-1, nranks=None):
+        if rank != -1:
+            assert rank in range(nranks) and nranks > 1
+            
+        eid_to_entity = {}
+        with open(entites_path) as fin:
+            for line in fin:
+                array = line.rstrip().split("\t")
+                assert len(array) == 2
+                eid_to_entity[int(array[0])] = array[1]
+                
+        all_paths = [path for path in [train_q2p_path, q2p_path, p2sp_path, p2cp_path] if path is not None]
+        if rank <= 0:
+            print("all_paths: ", all_paths, len(all_paths))
+        
+        if rank == -1:
+            train_examples = []
+            for training_path in all_paths:
+                with open(training_path) as fin:
+                    for line_idx, line in enumerate(fin):
+                        hid, reltid, negtid, relation = line.rstrip().split("\t")
+                        hid, reltid, negtid, relation = int(hid), int(reltid), int(negtid), relation
+                        train_examples.append((hid, reltid, negtid, relation))
+        else:
+            train_examples = []
+            for training_path in all_paths:
+                with open(training_path) as fin:
+                    for line_idx, line in enumerate(fin):
+                        if line_idx % nranks == rank:
+                            hid, reltid, negtid, relation = line.rstrip().split("\t")
+                            hid, reltid, negtid, relation = int(hid), int(reltid), int(negtid), relation
+                            train_examples.append((hid, reltid, negtid, relation))
+                            
+        return cls(eid_to_entity, eid_to_entity, train_examples, tokenizer, max_head_text_len, max_tail_text_len)
+    
+    @classmethod
+    def create_from_simrec_task_files(cls, entites_path, tokenizer, max_head_text_len, max_tail_text_len, 
+                                     a2sp_path, a2cp_path=None, q2a_path=None, s2sp_path=None, s2cp_path=None, q2s_path=None,
+                                     rank=-1, nranks=None):
+        if rank != -1:
+            assert rank in range(nranks) and nranks > 1
+            
+        eid_to_entity = {}
+        with open(entites_path) as fin:
+            for line in fin:
+                array = line.rstrip().split("\t")
+                assert len(array) == 2
+                eid_to_entity[int(array[0])] = array[1]
+                
+        all_paths = [path for path in [a2sp_path, a2cp_path, q2a_path, s2sp_path, s2cp_path, q2s_path] if path is not None]
+        if rank <= 0:
+            print("all_paths: ", all_paths, len(all_paths))
+        
+        if rank == -1:
+            train_examples = []
+            for training_path in all_paths:
+                with open(training_path) as fin:
+                    for line_idx, line in enumerate(fin):
+                        hid, reltid, negtid, relation = line.rstrip().split("\t")
+                        hid, reltid, negtid, relation = int(hid), int(reltid), int(negtid), relation
+                        train_examples.append((hid, reltid, negtid, relation))
+        else:
+            train_examples = []
+            for training_path in all_paths:
+                with open(training_path) as fin:
+                    for line_idx, line in enumerate(fin):
+                        if line_idx % nranks == rank:
+                            hid, reltid, negtid, relation = line.rstrip().split("\t")
+                            hid, reltid, negtid, relation = int(hid), int(reltid), int(negtid), relation
+                            train_examples.append((hid, reltid, negtid, relation))
+                            
+        return cls(eid_to_entity, eid_to_entity, train_examples, tokenizer, max_head_text_len, max_tail_text_len)
+    
+    @classmethod
+    def create_from_joint_task_files(cls, entites_path, tokenizer, max_head_text_len, max_tail_text_len, 
+                                     a2sp_path, a2cp_path=None, q2a_path=None,
+                                     rank=-1, nranks=None):
+        if rank != -1:
+            assert rank in range(nranks) and nranks > 1
+            
+        eid_to_entity = {}
+        with open(entites_path) as fin:
+            for line in fin:
+                array = line.rstrip().split("\t")
+                assert len(array) == 2
+                eid_to_entity[int(array[0])] = array[1]
+                
+        all_paths = [path for path in [a2sp_path, a2cp_path, q2a_path] if path is not None]
+        if rank <= 0:
+            print("all_paths: ", all_paths, len(all_paths))
+        
+        if rank == -1:
+            train_examples = []
+            for training_path in all_paths:
+                with open(training_path) as fin:
+                    for line_idx, line in enumerate(fin):
+                        hid, reltid, negtid, relation = line.rstrip().split("\t")
+                        hid, reltid, negtid, relation = int(hid), int(reltid), int(negtid), relation
+                        train_examples.append((hid, reltid, negtid, relation))
+        else:
+            train_examples = []
+            for training_path in all_paths:
+                with open(training_path) as fin:
+                    for line_idx, line in enumerate(fin):
+                        if line_idx % nranks == rank:
+                            hid, reltid, negtid, relation = line.rstrip().split("\t")
+                            hid, reltid, negtid, relation = int(hid), int(reltid), int(negtid), relation
+                            train_examples.append((hid, reltid, negtid, relation))
+                            
+        return cls(eid_to_entity, eid_to_entity, train_examples, tokenizer, max_head_text_len, max_tail_text_len)
+
 
 
 

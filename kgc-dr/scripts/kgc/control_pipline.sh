@@ -1,22 +1,13 @@
 #!/bin/bash
 
 EXPERIMENT_FORDER="/home/jupyter/jointly_rec_and_search/experiments/kgc"
-TMP_RECORD="${EXPERIMENT_FORDER}/temp_record.log"
+TMP_RECORD="${EXPERIMENT_FORDER}/control_record.log"
 
 ARELS_PATH="/home/jupyter/jointly_rec_and_search/datasets/kgc/arels.compl.test.tsv"
-ANCHORS_PATH="/home/jupyter/jointly_rec_and_search/datasets/kgc/test/anchors.test.tsv"
+ANCHORS_PATH="/home/jupyter/jointly_rec_and_search/datasets/kgc/test/control_test/anchors.test.control.tsv"
 PASSAGE_PATH="/home/jupyter/jointly_rec_and_search/datasets/kgc/collection_title_catalog.tsv"
 
-echo "arels_path: ${ARELS_PATH}" > $TMP_RECORD
-echo "anchors_path: ${ANCHORS_PATH}" >> $TMP_RECORD
-echo "collection_path: ${PASSAGE_PATH}" >> $TMP_RECORD
-
-DATES=($(ls "${EXPERIMENT_FORDER}"))
-
-for DATE in "${DATES[@]}"
-do
-if [ -d "${EXPERIMENT_FORDER}/${DATE}" ]; then
-echo "current experiment folder: ${EXPERIMENT_FORDER}/${DATE}"
+DATE="experiment_07-26_182534"
 
 PRETRAINED_PATH="${EXPERIMENT_FORDER}/${DATE}/models/checkpoint_latest"
 INDEX_DIR="${EXPERIMENT_FORDER}/${DATE}/index/"
@@ -27,7 +18,7 @@ RANKING_PATH="${EXPERIMENT_FORDER}/${DATE}/runs/checkpoint_latest.test.run"
 
 
 # 1, index
-python -m torch.distributed.launch --nproc_per_node=4 retriever/parallel_index_text_1.py \
+python -m torch.distributed.launch --nproc_per_node=2 retriever/parallel_index_text_1.py \
                                     --pretrained_path=$PRETRAINED_PATH \
                                     --passages_path=$PASSAGE_PATH \
                                     --index_dir=$INDEX_DIR \
@@ -53,6 +44,3 @@ python retriever/retrieve_top_passages.py \
 # 3, evaluation
 echo "================================================ standard qrel ================================================" >> $TMP_RECORD
 python evaluation/retrieval_evaluator.py --qrels_path=$ARELS_PATH --ranking_path=$RANKING_PATH >> $TMP_RECORD
-
-fi
-done

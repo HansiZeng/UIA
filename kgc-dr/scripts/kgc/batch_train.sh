@@ -1,11 +1,11 @@
 #!/bin/bash 
-e
 
-a2sp_paths=("None" "/home/jupyter/jointly_rec_and_search/datasets/kgc/train/bm25_neg/max5_triples.a2sp.rnd.tsv")
-q2a_paths=("None" "/home/jupyter/jointly_rec_and_search/datasets/kgc/train/bm25_neg/max5_triples.q2a.tsv")
-c2cp_paths=("None" "/home/jupyter/jointly_rec_and_search/datasets/kgc/train/bm25_neg/max5_triples.c2cp.tsv")
-c2sp_paths=("None" "/home/jupyter/jointly_rec_and_search/datasets/kgc/train/bm25_neg/max5_triples.c2sp.rnd.tsv")
-q2c_paths=("None" "/home/jupyter/jointly_rec_and_search/datasets/kgc/train/bm25_neg/max5_triples.q2c.tsv")
+#a2sp_paths=("None" "/home/jupyter/jointly_rec_and_search/datasets/kgc/train/bm25_neg/max5_triples.a2sp.rnd.tsv")
+a2sp_paths=("/home/jupyter/jointly_rec_and_search/datasets/kgc/train/bm25_neg/max5_triples.a2sp.rnd.tsv")
+q2a_paths=("/home/jupyter/jointly_rec_and_search/datasets/kgc/train/bm25_neg/max5_triples.q2a.tsv")
+c2cp_paths=("/home/jupyter/jointly_rec_and_search/datasets/kgc/train/bm25_neg/max5_triples.c2cp.tsv")
+c2sp_paths=("/home/jupyter/jointly_rec_and_search/datasets/kgc/train/bm25_neg/max5_triples.c2sp.rnd.tsv")
+q2c_paths=("/home/jupyter/jointly_rec_and_search/datasets/kgc/train/bm25_neg/max5_triples.q2c.tsv")
 
 
 EPOCHS=32
@@ -30,7 +30,7 @@ do
                                     --num_train_epochs=32 \
                                     --experiment_folder="/home/jupyter/jointly_rec_and_search/experiments/kgc/" \
                                     --train_batch_size=384 \
-                                    --evaluate_steps=10000 \
+                                    --evaluate_steps=1000000 \
                                     --independent_encoders \
                                     --max_head_text_len=256 \
                                     --max_tail_text_len=256

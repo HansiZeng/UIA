@@ -1,11 +1,11 @@
 #!/bin/bash
 
-EXPERIMENT_FORDER="/home/jupyter/jointly_rec_and_search/experiments/kgc"
+EXPERIMENT_FORDER="/home/jupyter/jointly_rec_and_search/experiments/kgc_search"
 TMP_RECORD="${EXPERIMENT_FORDER}/temp_record.log"
 
-ARELS_PATH="/home/jupyter/jointly_rec_and_search/datasets/kgc/arels.compl.test.tsv"
-ANCHORS_PATH="/home/jupyter/jointly_rec_and_search/datasets/kgc/test/anchors.test.tsv"
-PASSAGE_PATH="/home/jupyter/jointly_rec_and_search/datasets/kgc/collection_title_catalog.tsv"
+ARELS_PATH="/home/jupyter/jointly_rec_and_search/datasets/kgc_search/qrels.test.tsv"
+ANCHORS_PATH="/home/jupyter/jointly_rec_and_search/datasets/kgc_search/queries.test.small.tsv"
+PASSAGE_PATH="/home/jupyter/jointly_rec_and_search/datasets/kgc_search/collection_title_catalog.tsv"
 
 echo "arels_path: ${ARELS_PATH}" > $TMP_RECORD
 echo "anchors_path: ${ANCHORS_PATH}" >> $TMP_RECORD
