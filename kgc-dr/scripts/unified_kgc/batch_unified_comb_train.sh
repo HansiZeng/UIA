@@ -2,9 +2,12 @@
 
 t_a2sp_path="/home/jupyter/jointly_rec_and_search/datasets/unified_kgc/unified_train/a2sp.train.tsv"
 t_a2cp_path="/home/jupyter/jointly_rec_and_search/datasets/unified_kgc/unified_train/a2cp.train.tsv"
-t_q2a_path="/home/jupyter/jointly_rec_and_search/datasets/unified_kgc/unified_train/q2a.train.tsv"
+#t_q2a_path="/home/jupyter/jointly_rec_and_search/datasets/unified_kgc/unified_train/q2a.train.tsv"
+t_q2a_path="/home/jupyter/jointly_rec_and_search/datasets/unified_kgc/unified_train/max2_qorient_q2p.train.tsv"
 
-all_paths=("${t_a2sp_path}-None-None" "None-${t_a2cp_path}-None" "None-None-${t_q2a_path}" "${t_a2sp_path}-${t_a2cp_path}-None" "${t_a2sp_path}-None-${t_q2a_path}" "None-${t_a2cp_path}-${t_q2a_path}" "${t_a2sp_path}-${t_a2cp_path}-${t_q2a_path}")
+#all_paths=("${t_a2sp_path}-None-None" "None-${t_a2cp_path}-None" "None-None-${t_q2a_path}" "${t_a2sp_path}-${t_a2cp_path}-None" "${t_a2sp_path}-None-${t_q2a_path}" "None-${t_a2cp_path}-${t_q2a_path}" "${t_a2sp_path}-${t_a2cp_path}-${t_q2a_path}")
+#all_paths=("${t_a2sp_path}-${t_a2cp_path}-${t_q2a_path}" "${t_a2sp_path}-${t_a2cp_path}-None" "${t_a2sp_path}-None-${t_q2a_path}" "None-${t_a2cp_path}-${t_q2a_path}" )
+all_paths=("${t_a2sp_path}-${t_a2cp_path}-${t_q2a_path}")
 
 EPOCHS=24
 
@@ -27,5 +30,5 @@ do
                         --independent_encoders \
                         --max_head_text_len=256 \
                         --max_tail_text_len=256 \
-                        --max_global_steps=160000
+                        --max_global_steps=100000000
 done
