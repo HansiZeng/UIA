@@ -21,7 +21,7 @@ Repo for Lowes project "joint modeling of recommendation and search systems".
 │    │
 │    └─── scripts/unified_kgc # the folder contain the scripts for training and testing.
 │            │─── batch_unified_comb_train.sh
-│            └─── batch_pipline.sh 
+│            └─── batch_unified_pipline.sh 
 │    
 └─── ...
 ```
