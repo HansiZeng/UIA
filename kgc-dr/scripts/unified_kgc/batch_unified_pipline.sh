@@ -1,16 +1,16 @@
 #!/bin/bash
 
-EXPERIMENT_FORDER="/home/jupyter/jointly_rec_and_search/experiments/unified_kgc"
+EXPERIMENT_FORDER="/work/hzeng_umass_edu/ir-research/joint_modeling_search_and_rec/experiments/unified_kgc"
 TMP_RECORD="${EXPERIMENT_FORDER}/temp_record.log"
 
-SIM_ARELS_PATH="/home/jupyter/jointly_rec_and_search/datasets/unified_kgc/unified_test/arels.test.sim.tsv"
-SIM_ANCHORS_PATH="/home/jupyter/jointly_rec_and_search/datasets/unified_kgc/unified_test/anchors.test.sim.small.tsv"
-COMPL_ARELS_PATH="/home/jupyter/jointly_rec_and_search/datasets/unified_kgc/unified_test/arels.test.compl.tsv"
-COMPL_ANCHORS_PATH="/home/jupyter/jointly_rec_and_search/datasets/unified_kgc/unified_test/anchors.test.compl.tsv"
-QRELS_PATH="/home/jupyter/jointly_rec_and_search/datasets/unified_kgc/unified_test/qrels.test.tsv"
-QUERIES_PATH="/home/jupyter/jointly_rec_and_search/datasets/unified_kgc/unified_test/queries.test.small.tsv"
+SIM_ARELS_PATH="/work/hzeng_umass_edu/ir-research/joint_modeling_search_and_rec/datasets/unified_kgc/unified_test/arels.test.sim.tsv"
+SIM_ANCHORS_PATH="/work/hzeng_umass_edu/ir-research/joint_modeling_search_and_rec/datasets/unified_kgc/unified_test/anchors.test.sim.small.tsv"
+COMPL_ARELS_PATH="/work/hzeng_umass_edu/ir-research/joint_modeling_search_and_rec/datasets/unified_kgc/unified_test/arels.test.compl.tsv"
+COMPL_ANCHORS_PATH="/work/hzeng_umass_edu/ir-research/joint_modeling_search_and_rec/datasets/unified_kgc/unified_test/anchors.test.compl.tsv"
+QRELS_PATH="/work/hzeng_umass_edu/ir-research/joint_modeling_search_and_rec/datasets/unified_kgc/unified_test/qrels.test.tsv"
+QUERIES_PATH="/work/hzeng_umass_edu/ir-research/joint_modeling_search_and_rec/datasets/unified_kgc/unified_test/queries.test.small.tsv"
 
-PASSAGE_PATH="/home/jupyter/jointly_rec_and_search/datasets/unified_kgc/collection_title_catalog.tsv"
+PASSAGE_PATH="/work/hzeng_umass_edu/ir-research/joint_modeling_search_and_rec/datasets/unified_kgc/collection_title_catalog.tsv"
 
 echo "arels_path: ${ARELS_PATH}" > $TMP_RECORD
 echo "anchors_path: ${ANCHORS_PATH}" >> $TMP_RECORD
@@ -34,7 +34,7 @@ python -m torch.distributed.launch --nproc_per_node=4 retriever/parallel_index_t
                                     --pretrained_path=$PRETRAINED_PATH \
                                     --passages_path=$PASSAGE_PATH \
                                     --index_dir=$INDEX_DIR \
-                                    --batch_size=512 \
+                                    --batch_size=128 \
                                     --max_length=256
 
 python retriever/parallel_index_text_2.py --pretrained_path=$PRETRAINED_PATH \

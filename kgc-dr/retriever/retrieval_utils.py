@@ -1,3 +1,4 @@
+from cgitb import text
 import os 
 import pickle 
 import glob 
@@ -14,6 +15,7 @@ import torch
 import faiss 
 import numpy as np 
 from timeit import default_timer as timer
+from transformers.tokenization_utils_base import BatchEncoding
 
 from utils import batch_to_cuda
 
@@ -21,7 +23,7 @@ def batch_to_device(batch, target_device: torch.device):
     for key in batch:
         if isinstance(batch[key], torch.Tensor):
             batch[key] = batch[key].to(target_device)
-        if isinstance(batch[key], dict):
+        if isinstance(batch[key], dict) or isinstance(batch[key], BatchEncoding):
             for sub_key in batch[key]:
                 if isinstance(batch[key][sub_key], torch.Tensor):
                     batch[key][sub_key] = batch[key][sub_key].to(target_device)
@@ -153,7 +155,7 @@ def write_embeddings_to_memmap(embeddings, embeddings_ids, block_size, run_folde
     with open(os.path.join(run_folder, f"meta_{text_type}.pkl"), "wb") as f:
         pickle.dump(meta, f)
     
-def read_embeddings_from_memmap(run_folder, text_type, block_size, hidden_size, use_fp16) -> (np.ndarray, List[int], Dict[int, str]):
+def read_embeddings_from_memmap(run_folder, text_type, block_size, hidden_size, use_fp16):
     # please check ebd_idxs is continuous from 0 to num_of_emb_example 
     # please check embedding_ids is np.int64
     with open(os.path.join(run_folder, f"meta_{text_type}.pkl"), "rb") as f:
@@ -240,3 +242,50 @@ def convert_index_to_gpu(index, faiss_gpu_index, useFloat16=False):
         index = faiss.index_cpu_to_gpu_multiple(vres, vdev, index, co)
 
     return index
+
+
+def get_user_side_embedding_from_scratch(model, dataloader, use_fp16, is_query, show_progress_bar, distributed_model=False):
+    # the model's type is kgc-dr.modeling.user_seq_encoder.UserSeqEncoder
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    embeddings = []
+    embeddings_ids = []
+    model.eval()
+    for _, batch in tqdm(enumerate(dataloader), disable= not show_progress_bar, 
+                                desc=f"encode # {len(dataloader)} seqs"):
+        with torch.no_grad():
+            with torch.cuda.amp.autocast(enabled=use_fp16):
+                batch = batch_to_device(batch, device)
+                inputs = {
+                    "query_relation": batch["query_relation"],
+                    "context_key_relation": batch["context_key_relation"],
+                    "context_value": batch["context_value"],
+
+                    "seq_lengths": batch["seq_lengths"],
+                    "id_attention_masks": batch["id_attention_masks"],
+
+                    "seq_last_output": True,
+                }
+                if is_query:
+                    if distributed_model:
+                        reps = model.module.query_embs(**inputs)[0]
+                    else:
+                        reps = model.query_embs(**inputs)[0]
+                else:
+                    raise NotImplementedError
+            
+                text_ids = batch["uids"].cpu().tolist()
+
+        embeddings.append(reps.cpu().numpy())
+        
+        assert isinstance(text_ids, list)
+        embeddings_ids.extend(text_ids)
+        
+    embeddings = np.concatenate(embeddings)
+
+    assert len(embeddings_ids) == embeddings.shape[0]
+    assert isinstance(embeddings_ids[0], int)
+    print(f"# nan in embeddings: {np.sum(np.isnan(embeddings))}")
+    #assert embeddings.dtype == np.float16 if use_fp16 else np.float32  [Warning] ebedding.dtype != np.float16 even I enable the autocast. Strange !!!
+
+    return embeddings, embeddings_ids

@@ -5,4 +5,4 @@ from .standard_lambda_rank import lambda_loss
 from .margin_mse import MarginMSE
 from .kl_div import KLDiv
 from .custom_lambda_loss import CustomLambdaLoss
-from .contrastive_loss import ContrastiveLoss
+from .contrastive_loss import ContrastiveLoss, SeqContrastiveLoss

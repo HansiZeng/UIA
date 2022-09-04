@@ -3,8 +3,6 @@ import math
 
 import torch
 import torch.nn as nn 
-import torch_geometric
-from torch_scatter import scatter_add
 
 from transformers import (AutoTokenizer, AutoModel, AdamW, get_linear_schedule_with_warmup)
 from losses import ContrastiveLoss

@@ -1,16 +1,19 @@
 #!/bin/bash
 
-EXPERIMENT_FORDER="/home/jupyter/jointly_rec_and_search/experiments/unified_kgc"
-TMP_RECORD="${EXPERIMENT_FORDER}/user_temp_record.log"
+HOME_PREFIX="/work/hzeng_umass_edu/ir-research/joint_modeling_search_and_rec"
 
-SIM_ARELS_PATH="/home/jupyter/jointly_rec_and_search/datasets/unified_kgc/unified_user/without_context/urels.test.sim.tsv"
-SIM_ANCHORS_PATH="/home/jupyter/jointly_rec_and_search/datasets/unified_kgc/unified_user/without_context/uid_anchors.test.sim.small.tsv"
-COMPL_ARELS_PATH="/home/jupyter/jointly_rec_and_search/datasets/unified_kgc/unified_user/without_context/urels.test.compl.tsv"
-COMPL_ANCHORS_PATH="/home/jupyter/jointly_rec_and_search/datasets/unified_kgc/unified_user/without_context/uid_anchors.test.compl.tsv"
-QRELS_PATH="/home/jupyter/jointly_rec_and_search/datasets/unified_kgc/unified_user/without_context/urels.test.search.tsv"
-QUERIES_PATH="/home/jupyter/jointly_rec_and_search/datasets/unified_kgc/unified_user/without_context/uid_queries.test.search.small.tsv"
+EXPERIMENT_FORDER="${HOME_PREFIX}/experiments/unified_kgc"
+TMP_RECORD="${EXPERIMENT_FORDER}/user_static_result.log"
 
-PASSAGE_PATH="/home/jupyter/jointly_rec_and_search/datasets/unified_kgc/collection_title_catalog.tsv"
+DATASET_PREFIX="${HOME_PREFIX}/datasets/unified_kgc/unified_user/sequential_train_test"
+SIM_ARELS_PATH="${DATASET_PREFIX}/urels.sim.test.tsv"
+SIM_ANCHORS_PATH="${DATASET_PREFIX}/without_context/uid_anchors.test.sim.small.tsv"
+COMPL_ARELS_PATH="${DATASET_PREFIX}/urels.compl.test.tsv"
+COMPL_ANCHORS_PATH="${DATASET_PREFIX}/without_context/uid_anchors.test.compl.tsv"
+QRELS_PATH="${DATASET_PREFIX}/urels.search.test.tsv"
+QUERIES_PATH="${DATASET_PREFIX}/without_context/uid_queries.test.search.small.tsv"
+
+PASSAGE_PATH="${HOME_PREFIX}/datasets/unified_kgc/collection_title_catalog.tsv"
 
 echo "arels_path: ${ARELS_PATH}" > $TMP_RECORD
 echo "anchors_path: ${ANCHORS_PATH}" >> $TMP_RECORD
@@ -34,7 +37,7 @@ python -m torch.distributed.launch --nproc_per_node=4 retriever/parallel_index_t
                                     --pretrained_path=$PRETRAINED_PATH \
                                     --passages_path=$PASSAGE_PATH \
                                     --index_dir=$INDEX_DIR \
-                                    --batch_size=512 \
+                                    --batch_size=128 \
                                     --max_length=256
 
 python retriever/parallel_index_text_2.py --pretrained_path=$PRETRAINED_PATH \
