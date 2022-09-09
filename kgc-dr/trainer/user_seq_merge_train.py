@@ -23,10 +23,10 @@ import numpy as np
 from tqdm import tqdm, trange
 
 
-from dataset import KGCTripleDataset
-from utils import MetricMonitor, AverageMeter, is_first_worker
-from modeling.dual_encoder import ContrastiveDualEncoder
-from arguments import ModelArguments, UnifiedDataTrainArguments
+from dataset import UserSequentialDataset
+from utils import MetricMonitor, AverageMeter
+from modeling import UserSeqMergeEncoder
+from user_argument import DataTrainArguments, MergerModelArguments
 
 import torch.cuda.amp as amp 
 
@@ -34,6 +34,7 @@ BLOCK_SIZE = 50_000
 HIDDEN_SIZE = 768
 PAD_REL_PID = -1
 target_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 def set_env(args):
     args.distributed = False
@@ -87,7 +88,7 @@ def set_seed(args):
         torch.cuda.manual_seed_all(args.seed)
 
 def get_args():
-    parser = HfArgumentParser((UnifiedDataTrainArguments, ModelArguments))
+    parser = HfArgumentParser((DataTrainArguments, MergerModelArguments))
     args, model_args = parser.parse_args_into_dataclasses()
     
     if args.local_rank < 1:
@@ -116,81 +117,30 @@ def get_args():
 
 def train(args, model_args):
     loss_avg_meter = AverageMeter()
-    test_monitor = MetricMonitor()
-    
-    # assign task
-    assert args.task in ["SIMILAR_REC", "COMPL_REC", "RELEVANT_SEARCH", "JOINT"], args.task
-    if "REC" in args.task:
-        if args.a2sp_path == "None":
-            args.a2sp_path = None
-        if args.a2cp_path == "None":
-            args.a2cp_path = None
-        if args.q2a_path == "None":
-            args.q2a_path = None
-        
-        if args.task == "SIMILAR_REC":
-            assert args.a2sp_path != None
-            if args.s2sp_path == "None":
-                args.s2sp_path = None
-            if args.s2cp_path == "None":
-                args.s2cp_path = None
-            if args.q2s_path == "None":
-                args.q2s_path = None
-        elif args.task == "COMPL_REC":
-            assert args.a2cp_path != None
-            if args.c2sp_path == "None":
-                args.c2sp_path = None
-            if args.c2cp_path == "None":
-                args.c2cp_path = None
-            if args.q2c_path == "None":
-                args.q2c_path = None
-        else:
-            raise ValueError(f"task: {args.task} is not legal.")
-    elif "SEARCH" in args.task:
-        raise NotImplementedError()
-    elif "JOINT" in args.task:
-        if args.a2sp_path == "None":
-            args.a2sp_path = None
-        if args.a2cp_path == "None":
-            args.a2cp_path = None
-        if args.q2a_path == "None":
-            args.q2a_path = None
-    else:
-        raise ValueError(f"task: {args.task} is not legal.")
     
     # dataset
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name_or_path)
     if args.distributed:
         assert args.train_batch_size % args.nranks == 0
-        if args.task == "SIMILAR_REC":
-            train_dataset = KGCTripleDataset.create_from_simrec_task_files(args.entites_path, tokenizer, 
-                                                                           args.max_head_text_len, args.max_tail_text_len, 
-                                                                        a2sp_path=args.a2sp_path, a2cp_path=args.a2cp_path, 
-                                                                           q2a_path=args.q2a_path, s2sp_path=args.s2sp_path, 
-                                                                           s2cp_path=args.s2cp_path, q2s_path=args.q2s_path,
-                                                                           rank=args.local_rank, nranks=args.nranks)
-            train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=args.train_batch_size//args.nranks, shuffle=True, 
-                                                    num_workers=4,collate_fn=train_dataset.collate_fn, drop_last=True)
-        elif args.task == "JOINT":
-            train_dataset = KGCTripleDataset.create_from_joint_task_files(args.entites_path, tokenizer, 
-                                                                           args.max_head_text_len, args.max_tail_text_len, 
-                                                                        a2sp_path=args.a2sp_path, a2cp_path=args.a2cp_path, 
-                                                                           q2a_path=args.q2a_path, 
-                                                                           rank=args.local_rank, nranks=args.nranks)
-            train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=args.train_batch_size//args.nranks, shuffle=True, 
-                                                    num_workers=4,collate_fn=train_dataset.collate_fn, drop_last=True)
-        else:
-            raise NotImplementedError
-        
+        train_dataset = UserSequentialDataset.create_from_json_file(
+                            eid_path=args.eid_path,
+                            examples_path=args.examples_path,
+                            tokenizer=tokenizer,
+                            max_text_len=args.max_text_len,
+                            apply_zero_attention=model_args.apply_zero_attention,
+                            is_train=True,
+                            rank=args.local_rank, nranks=args.nranks)
+        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=args.train_batch_size//args.nranks, shuffle=True, 
+                                                num_workers=4,collate_fn=train_dataset.collate_fn, drop_last=True)
     else:
         raise NotImplementedError
 
     # for model 
     if args.model_pretrained_path: 
         assert not args.resume
-        model = ContrastiveDualEncoder.from_pretrained(args.model_pretrained_path, model_args)
+        model = UserSeqMergeEncoder.from_pretrained(args.model_pretrained_path, model_args)
     else:
-        model = ContrastiveDualEncoder(model_args)
+        model = UserSeqMergeEncoder(model_args)
     model.cuda()
     
     if args.distributed:
@@ -225,12 +175,17 @@ def train(args, model_args):
 
     model.zero_grad()
     global_step = 0
-    best_metric = 0. # record mrr@10
     start_epoch = 0
 
     # resume training
     if args.resume:
         raise NotImplementedError
+
+    if args.local_rank < 1:
+        print("trainable parameters: ")
+        for name, param in model.named_parameters():
+            if param.requires_grad:
+                print(name, param.shape)
 
     # start training 
     if args.use_fp16:
@@ -240,7 +195,15 @@ def train(args, model_args):
             model.train()
             batch = batch_to_device(batch, target_device)
             with amp.autocast(enabled=args.use_fp16):
-                loss = model(batch["hr_texts"], batch["tail_texts"])
+                loss = model(
+                    query_relation=batch["query_relation"],
+                    context_key_relation=batch["context_key_relation"],
+                    context_value=batch["context_value"],
+                    target_value=batch["target_value"],
+                    neg_value=batch["neg_value"],
+                    seq_lengths=batch["seq_lengths"],
+                    id_attention_masks=batch["id_attention_masks"],
+                    in_batch_mask=batch["in_batch_mask"])
             if args.use_fp16:
                 scaler.scale(loss).backward()
 
@@ -285,8 +248,7 @@ def train(args, model_args):
                             'scheduler': scheduler.state_dict()
                             }
                     torch.save(traininig_state_dict, os.path.join(save_dir, "training_state.pt"))
-        if global_step >= args.max_global_steps:
-            break
+    
     
     if args.local_rank < 1:
         save_dir = os.path.join(args.model_save_dir, f"checkpoint_latest")

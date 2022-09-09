@@ -25,7 +25,7 @@ from tqdm import tqdm, trange
 
 from dataset import UserSequentialDataset
 from utils import MetricMonitor, AverageMeter
-from modeling.user_seq_encoder import UserSeqEncoder
+from modeling import UserSeqEncoder
 from user_argument import DataTrainArguments, ModelArguments
 
 import torch.cuda.amp as amp 

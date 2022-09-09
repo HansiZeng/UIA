@@ -34,28 +34,6 @@ class PositionEmbedding(nn.Module):
         output_tensor = input_tensor + self.position_embedding(position_ids)
         return output_tensor
 
-class GRUOutput(nn.Module):
-    def __init__(self, config):
-        super().__init__()
-
-        self.gru = nn.GRU(config.hidden_size, config.hidden_size, batch_first=True)
-    
-    def forward(self, input_tensor: torch.Tensor, seq_lengths: torch.LongTensor):
-        """
-        Args:
-            input_tensor: [B, L, D]
-
-        Returns:
-            hidden_states: [B, L, D]
-        """
-        packed_tensor = torch.nn.utils.rnn.pack_padded_sequence(input_tensor, seq_lengths.cpu().numpy(), 
-                                                                batch_first=True, enforce_sorted=False)
-        packed_output, _ = self.gru(packed_tensor)
-        hidden_states, _ =  torch.nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True)
-
-        return hidden_states
-
-
 # highly copied from transformers.models.bert.modeling_bert.BertSelfAttention with some modifications
 class SelfAttention(nn.Module):
     def __init__(self, config):
@@ -72,12 +50,7 @@ class SelfAttention(nn.Module):
 
         self.query = nn.Linear(config.hidden_size, self.all_head_size)
         self.key = nn.Linear(config.hidden_size, self.all_head_size)
-        if config.value_from_gru and not config.apply_value_layer:
-            self.value = nn.Identity()
-        else:
-            self.value = nn.Linear(config.hidden_size, self.all_head_size)
-        #if not config.value_from_gru:
-            #assert config.apply_value_layer, f"apply_value_layer must be true but got {config.apply_value_layer}"
+        self.value = nn.Linear(config.hidden_size, self.all_head_size)
         
         self.dropout = nn.Dropout(config.attention_probs_dropout_prob)
 
@@ -166,54 +139,50 @@ class Attention(nn.Module):
             return attention_output + (self_outputs[1],)
         else:
             return (attention_output,)
-
-class SeqOutput(nn.Module):
+        
+class Merger(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config 
 
-        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
+        self.dense = nn.Linear(2*config.hidden_size, config.hidden_size)
         self.act = ACT2FN[config.seq_output_act_fn]
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
-    def forward(self, input_tensor: torch.Tensor):
-        hidden_states = self.act(self.dense(input_tensor))
-        hidden_states = self.dropout(hidden_states)
-        hidden_states = self.LayerNorm(hidden_states + input_tensor)
+    def forward(self, hidden_states, input_tensor):
+        """
+        Args:
+            hidden_states: with the shape of [L1, D]
+        """
+        output_tensor = torch.cat([hidden_states, input_tensor], dim=-1)
+        output_tensor = self.act(self.dense(output_tensor))
+        output_tensor = self.dropout(output_tensor)
+        
+        return output_tensor
 
-        return hidden_states
-
-class UserSeqEncoder(nn.Module):
+class UserSeqMergeEncoder(nn.Module):
     def __init__(self, model_args, backbone_args=None):
         super().__init__()
         self.model_args = model_args 
         
         # position embedding
-        if self.model_args.apply_position_embedding:
-            self.position_embedding = PositionEmbedding(config)
+        if model_args.apply_position_embedding:
+            self.position_embedding = PositionEmbedding(model_args)
 
-        # backbone
+        # architecture
         assert os.path.isdir(model_args.backbone_path), model_args.backbone_path
         backbone_args = torch.load(os.path.join(model_args.backbone_path, "model_args.pt"))
         self.backbone = DualEncoder.from_pretrained(model_args.backbone_path, backbone_args)
         for param in self.backbone.parameters():
             param.requires_grad = model_args.backbone_trainable
 
-        # attention module 
         self.attention = Attention(model_args)
-
-        # gru 
-        if model_args.value_from_gru:
-            self.gru = GRUOutput(model_args)
-        
-        # finaly module
-        self.out = SeqOutput(model_args)
+        self.merger = Merger(model_args)
 
         # loss_fn
         self.loss_fn = SeqContrastiveLoss()
         
-        self.model_name = "user_seq_encoder"
+        self.model_args.model_name = "user_seq_merge_encoder"
         
     def forward(
             self,
@@ -237,10 +206,7 @@ class UserSeqEncoder(nn.Module):
                         )
         query_emb = query_outputs[0] # either be L1xD for training or BxD for inference.
         passage_emb = self.passage_embs(target_value)
-        if neg_value != None:
-            neg_passage_emb = self.passage_embs(neg_value)
-        else:
-            neg_passage_emb = None
+        neg_passage_emb = self.passage_embs(neg_value)
 
         # compute loss 
         loss = self.loss_fn(query_emb, passage_emb, in_batch_mask, neg_passage_emb)
@@ -270,11 +236,6 @@ class UserSeqEncoder(nn.Module):
             query_hidden_states = pad_catted_tensor(self.backbone.query_embs(query_relation), seq_lengths) # BxLxD
             key_hidden_states = pad_catted_tensor(self.backbone.query_embs(context_key_relation), seq_lengths)
             value_hidden_states = pad_catted_tensor(self.backbone.passage_embs(context_value), seq_lengths)
-    
-        if self.model_args.value_from_gru:
-            value_hidden_states = self.gru(value_hidden_states, seq_lengths)
-        else:
-            value_hidden_states = value_hidden_states
 
         extended_id_attention_masks = get_extended_attention_mask(id_attention_masks) # Bxnum_headsxLxD/num_heads
         
@@ -287,12 +248,13 @@ class UserSeqEncoder(nn.Module):
         )
 
         attention_output = cat_padded_tensor(attention_outputs[0], seq_lengths) # BxLxD --> L1xD where L1 = sum(seq_lengths)
-        layer_output = self.out(attention_output) # L1xD
+        query_hidden_states = cat_padded_tensor(query_hidden_states, seq_lengths)
+        merger_output = self.merger(attention_output, query_hidden_states)
         
         if seq_last_output:
-            layer_output = get_seq_last_output(layer_output, seq_lengths)  # BxD. for inference
+            merger_output = get_seq_last_output(merger_output, seq_lengths)  # BxD. for inference
 
-        outputs = (layer_output, ) + attention_outputs[1:]
+        outputs = (merger_output,) + attention_outputs[1:]
 
         return outputs
     
@@ -300,7 +262,10 @@ class UserSeqEncoder(nn.Module):
         self,
         value,
     ):
-        value_hidden_states = self.backbone.passage_embs(value) # L1xD or BxD
+        if self.model_args.apply_value_layer_for_passage_emb:
+            value_hidden_states = self.attention.self.value(self.backbone.passage_embs(value))
+        else:
+            value_hidden_states = self.backbone.passage_embs(value) # L1xD or BxD
         return value_hidden_states
 
     @classmethod
@@ -333,6 +298,3 @@ class UserSeqEncoder(nn.Module):
 
     def get_output_dim(self):
         return self.bert.config.hidden_size
-
-
-

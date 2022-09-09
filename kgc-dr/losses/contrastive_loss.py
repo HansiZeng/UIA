@@ -20,13 +20,14 @@ class ContrastiveLoss():
         return F.cross_entropy(logits, targets)
 
 class SeqContrastiveLoss():
-    def __call__(self, query_emb, passage_emb, in_batch_mask, neg_passage_emb = None):
+    def __call__(self, query_emb, passage_emb, in_batch_mask, neg_passage_emb = None, T=1):
         """
         query_emb: [L1, D]
         passage_emb: [L1, D]
         in_batch_mask: [L1, L1]
         neg_passage_emb: [nxL1, D]
         """
+        assert query_emb.dim() == passage_emb.dim() and query_emb.size(0) == passage_emb.size(0)
         dtype = in_batch_mask.dtype 
         device = in_batch_mask.device
 
@@ -38,10 +39,15 @@ class SeqContrastiveLoss():
         else:
             logit_mask = in_batch_mask
             all_passage_emb = passage_emb
-
+        print()
         # change the 0-1 logits_mask to -\infity-0 logit_mask
         logit_mask = (1.0 - logit_mask) * torch.finfo(dtype).min
-        logits = (query_emb @ all_passage_emb.T) + logit_mask
+        logits = (query_emb @ all_passage_emb.t()) + logit_mask
+        logits /= T
+        
+        #print("logits: ", logits[0][:logits.size(1)//2])
+        #print("logits: ", logits[0][logits.size(1)//2:])
+        #print(logits.size())
         
         return F.cross_entropy(logits, targets)
 
@@ -49,31 +55,44 @@ class SeqContrastiveLoss():
     
 
 if __name__ == "__main__":
-    #qs = torch.randn(4, 3)
-    #ps_1 = torch.randn(8, 3)
-    #ps_2 = torch.randn(12,3)
-    #print(ContrastiveLoss()(qs, ps_1))
+    torch.set_printoptions(sci_mode=False)
+    import sys 
+    sys.path += ["../"]
+    bz, D = 128, 786
+    qs = torch.randn(bz, D)
+    ps_1 = qs + torch.normal(mean=torch.zeros_like(qs), std=.01)
+    ps_2 = qs + torch.normal(mean=torch.zeros_like(qs), std=1.)
+    ps = []
+    for x1, x2 in zip(ps_1, ps_2):
+        ps.append(x1.unsqueeze(0))
+        ps.append(x2.unsqueeze(0))
+    ps = torch.cat(ps, dim=0)
+    print(ContrastiveLoss()(qs, ps))
     #print(ContrastiveLoss()(qs, ps_2))
+    """
     torch.set_printoptions(sci_mode=False)
     import sys 
     sys.path += ["../"]
     from dataset.user_sequential_dataset import UserSequentialDataset
 
     print("hi")
+    for bz in [4, 16, 64, 128, 256]:
+        L = 4
+        L1 = bz*L
+        D = 786
+        n = 1
+        seq_lengths = [L]*bz
+        assert L1 == sum(seq_lengths)
+        in_batch_mask = torch.ones(L1, L1)
+        masked_indices = UserSequentialDataset.get_in_batch_masked_indices(seq_lengths)
+        in_batch_mask[masked_indices] = 0. 
 
-    L1 = 11 
-    D = 8
-    n = 1
-    seq_lengths = [4,3,2,2]
-    assert L1 == sum(seq_lengths)
-    in_batch_mask = torch.ones(L1, L1)
-    masked_indices = UserSequentialDataset.get_in_batch_masked_indices(seq_lengths)
-    in_batch_mask[masked_indices] = 0. 
+        query_emb = torch.randn(L1, D)
+        passage_emb = query_emb + torch.normal(mean=torch.zeros_like(query_emb), std=.01)
+        neg_passage_emb = query_emb + torch.normal(mean=torch.zeros_like(query_emb), std=1.0)
 
-    query_emb = torch.randn(L1, D)
-    passage_emb = query_emb# + torch.normal(mean=torch.zeros_like(query_emb), std=1.)
-    neg_passage_emb = None #torch.randn(L1*n, D)
-    
-    loss = SeqContrastiveLoss()(query_emb, passage_emb, in_batch_mask, neg_passage_emb)
-    print(loss)
-    
+        loss = SeqContrastiveLoss()(query_emb, passage_emb, in_batch_mask, neg_passage_emb, T=10)
+        print(f"bz: {bz}, loss: {loss.item():.3f}")
+        
+        #break
+    """

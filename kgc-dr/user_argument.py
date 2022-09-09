@@ -4,14 +4,17 @@ from typing import Union, Optional
 @dataclass 
 class ModelArguments: 
     # tunable parameters
-    value_from_gru: bool = field(default=True)
-    apply_value_layer: bool = field(default=True)
-    apply_zero_attention: bool = field(default=True)
     backbone_trainable: bool = field(default=False)
+    apply_position_embedding: bool = field(default=False)
+    
+    # should be true when training
+    value_from_gru: bool = field(default=False)
+    apply_value_layer: bool = field(default=False)
+    apply_zero_attention: bool = field(default=False)
+    
     seq_output_act_fn: str = field(default="gelu")
-
     backbone_path: str = field(
-        default="/work/hzeng_umass_edu/ir-research/joint_modeling_search_and_rec/experiments/unified_kgc/experiment_08-17_201817/models/checkpoint_latest/")
+        default="/home/jupyter/unity_jointly_rec_and_search/experiments/unified_kgc/experiment_09-07_005742/models/checkpoint_latest")
     output_id_attentions: bool = field(default=False)
     hidden_size: int = field(default=768)
     num_attention_heads: int = field(default=12)
@@ -19,20 +22,38 @@ class ModelArguments:
     attention_probs_dropout_prob: float = field(default=0.1)
 
     layer_norm_eps: float = field(default=1e-12)
+    max_position_embeddeings: int = field(default=14)
+    
+@dataclass
+class MergerModelArguments:
+    # tunable parameters
+    backbone_trainable: bool = field(default=False)
+    apply_position_embedding: bool = field(default=False)
+    apply_value_layer_for_passage_emb: bool = field(default=False)
+    apply_zero_attention: bool = field(default=False)
+    
+    seq_output_act_fn: str = field(default="gelu")
+    backbone_path: str = field(
+        default="/home/jupyter/unity_jointly_rec_and_search/experiments/unified_kgc/experiment_09-07_005742/models/checkpoint_latest")
+    output_id_attentions: bool = field(default=False)
+    hidden_size: int = field(default=768)
+    num_attention_heads: int = field(default=12)
+    hidden_dropout_prob: float = field(default=0.1)
+    attention_probs_dropout_prob: float = field(default=0.1)
+
+    layer_norm_eps: float = field(default=1e-12)
+    max_position_embeddeings: int = field(default=14)
 
 @dataclass
 class DataTrainArguments:
-    eid_path: str = field(
-        default="/work/hzeng_umass_edu/ir-research/joint_modeling_search_and_rec/datasets/unified_kgc/all_entities.tsv")
-
     # tunnable parameters
-    examples_path: str = field(
-        default="/work/hzeng_umass_edu/ir-research/joint_modeling_search_and_rec/datasets/unified_kgc/unified_user/sequential_train_test/hlen_4_randneg/search_sequential.train.json")
+    examples_path: str = field(default="")
     learning_rate: float = field(default=7e-4)
-    train_batch_size: int = field(default=32)
-
-    experiment_folder: str  = field(
-        default="/work/hzeng_umass_edu/ir-research/joint_modeling_search_and_rec/experiments/unified_user/")
+    train_batch_size: int = field(default=128)
+    num_train_epochs: int =  field(default=4)
+    
+    eid_path: str = field(default="")
+    experiment_folder: str  = field(default="")
     run_folder: str = field(default="experiment")
     log_dir: str = field(default="log/")
     model_save_dir: str = field(default="models")
@@ -47,7 +68,6 @@ class DataTrainArguments:
     weight_decay: float =  field(default=0.01)
     adam_epsilon: float = field(default=1e-8)
     max_grad_norm: float =  field(default=1.0)
-    num_train_epochs: int =  field(default=4)
     warmup_steps: int = field(default=4000)
     max_global_steps: int = field(default=100000000000)
 

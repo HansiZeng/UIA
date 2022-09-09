@@ -23,13 +23,21 @@ from transformers import AutoTokenizer, AutoModel, HfArgumentParser
 import torch.distributed as dist
 import ujson 
 
-from modeling.user_seq_encoder import UserSeqEncoder
+from modeling import UserSeqEncoder, UserSeqMergeEncoder
 from retriever.retrieval_utils import write_embeddings_to_disk
 from dataset import KGCSequenceDataset
 from user_argument import RetrievalArguments
+from mn_to_model import NAME_TO_MODEL
 
 
 BLOCK_SIZE = 50_000
+
+def get_model_args(model_path):
+    assert os.path.isdir(model_path)
+    model_args_path = os.path.join(model_path, "model_args.pt")
+    model_args = torch.load(model_args_path)
+    
+    return model_args
 
 def set_env(args):
     args.distributed = False
@@ -59,7 +67,11 @@ def get_args():
 def main(args):
     # for model
     assert os.path.isdir(args.pretrained_path), args.pretrained_path
-    model = UserSeqEncoder.from_pretrained(args.pretrained_path)
+    
+    model_args = get_model_args(args.pretrained_path)
+    if args.local_rank <= 0:
+        print(f"MODEL NAME: {model_args.model_name}")
+    model = NAME_TO_MODEL[model_args.model_name].from_pretrained(args.pretrained_path)
     model.cuda()
     if args.distributed:
         model = torch.nn.parallel.DistributedDataParallel(model,
