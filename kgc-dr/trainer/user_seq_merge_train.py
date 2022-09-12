@@ -182,10 +182,11 @@ def train(args, model_args):
         raise NotImplementedError
 
     if args.local_rank < 1:
-        print("trainable parameters: ")
+        logger.info("trainable parameters: ")
         for name, param in model.named_parameters():
             if param.requires_grad:
-                print(name, param.shape)
+                logger.info(f"{name}, {str(param.shape)}")
+                
 
     # start training 
     if args.use_fp16:
@@ -224,7 +225,7 @@ def train(args, model_args):
             global_step += 1 
             
             if args.local_rank < 1:
-                train_loss = loss.item() 
+                train_loss = loss.detach().item() 
                 loss_avg_meter.update(train_loss)
                 
                 if global_step % args.logging_steps == 0:

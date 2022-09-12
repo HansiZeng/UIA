@@ -144,7 +144,7 @@ class Attention(nn.Module):
             return attention_output + (self_outputs[1],)
         else:
             return (attention_output,)
-        
+
 class Merger(nn.Module):
     def __init__(self, config):
         super().__init__()
