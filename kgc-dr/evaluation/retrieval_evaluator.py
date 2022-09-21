@@ -71,7 +71,7 @@ class RankingEvaluator():
                 self._output_per_query_metrics(qidx_to_qid, qrels, per_query_metrics_path, rr_per_candidate_depth, recall_per_candidate_depth, 
                                                 ndcg_per_candidate_depth)
 
-            return local_dict, (rr_per_candidate_depth, recall_per_candidate_depth, ndcg_per_candidate_depth)
+            return local_dict, (rr_per_candidate_depth, recall_per_candidate_depth, ndcg_per_candidate_depth), qidx_to_qid
         else:
             local_dict = self._calculate_metrics_plain(qid_to_ranklist, self.qid_to_relevant_data, binarization_point=2.0 if self.is_trec else 1.)
             return local_dict
