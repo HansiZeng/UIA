@@ -7,7 +7,15 @@ from torch.utils.data import DataLoader, Dataset
 import ujson 
 import numpy as np
 
+SIM_RELATION = "is_similar_to"
+COMPL_RELATION = "is_complementary_to"
+REL_RELATION = "is_relevant_to"
 
+RELATION_TO_RELID = {
+    SIM_RELATION: 0,
+    COMPL_RELATION: 1,
+    REL_RELATION: 2
+}
 
 
 class UserSequentialDataset(Dataset):
@@ -97,13 +105,15 @@ class UserSequentialDataset(Dataset):
     def collate_fn(self, batch):
         uids, query_ids, context_key_ids, context_value_ids = [], [], [], []
         query_texts, context_key_texts, context_value_texts = [], [], []
-        relations, seq_lengths = [], []
+        relations, seq_lengths, user_ids, relation_ids = [], [], [], []
         if self.is_train:
             target_value_ids, target_value_texts = [], []
             neg_value_ids, neg_value_texts = [], []
 
         for elem in batch:
             uids.append(elem["uid"])
+            user_ids.extend([elem["uid"]]*len(elem["query_ids"]))
+            relation_ids.extend([RELATION_TO_RELID[elem["relation"]]]*len(elem["query_ids"]))
             query_ids += elem["query_ids"]
             context_key_ids += elem["context_key_ids"]
             context_value_ids += elem["context_value_ids"]
@@ -149,6 +159,8 @@ class UserSequentialDataset(Dataset):
 
             return {
                 "uids": torch.LongTensor(uids),
+                "user_ids": torch.LongTensor(user_ids),
+                "relation_ids": torch.LongTensor(relation_ids),
                 "query_ids": torch.LongTensor(query_ids),
                 "context_key_ids": torch.LongTensor(context_key_ids),
                 "context_value_ids": torch.LongTensor(context_value_ids),
@@ -168,6 +180,8 @@ class UserSequentialDataset(Dataset):
         else:
             return {
                 "uids": torch.LongTensor(uids),
+                "user_ids": torch.LongTensor(user_ids),
+                "relation_ids": torch.LongTensor(relation_ids),
                 "query_ids": torch.LongTensor(query_ids),
                 "context_key_ids": torch.LongTensor(context_key_ids),
                 "context_value_ids": torch.LongTensor(context_value_ids),

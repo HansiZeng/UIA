@@ -41,10 +41,14 @@ def write_embeddings_to_disk(model, dataloader, use_fp16, rank_idx, write_freq, 
         with torch.no_grad():
             with torch.cuda.amp.autocast(enabled=use_fp16):
                 batch = batch_to_cuda(batch)
+                inputs = {
+                    "value": batch["seq"],
+                    "item_ids": torch.LongTensor(batch["id"]).cuda()
+                }
                 if distributed_model:
-                    reps = model.module.passage_embs(batch["seq"])
+                    reps = model.module.passage_embs(**inputs)
                 else:
-                    reps = model.passage_embs(batch["seq"])
+                    reps = model.passage_embs(**inputs)
                 text_ids = batch["id"]
 
         embeddings.append(reps.cpu().numpy())
@@ -244,7 +248,8 @@ def convert_index_to_gpu(index, faiss_gpu_index, useFloat16=False):
     return index
 
 
-def get_user_side_embedding_from_scratch(model, dataloader, use_fp16, is_query, show_progress_bar, distributed_model=False):
+def get_user_side_embedding_from_scratch(model, dataloader, use_fp16, is_query, show_progress_bar, distributed_model=False,
+                                        apply_user_item_ids=False):
     # the model's type is kgc-dr.modeling.user_seq_encoder.UserSeqEncoder
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -265,6 +270,8 @@ def get_user_side_embedding_from_scratch(model, dataloader, use_fp16, is_query, 
                     "id_attention_masks": batch["id_attention_masks"],
 
                     "seq_last_output": True,
+                    "user_ids": batch["user_ids"],
+                    "relation_ids": batch["relation_ids"]
                 }
                 if is_query:
                     if distributed_model:

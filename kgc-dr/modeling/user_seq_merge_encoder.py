@@ -146,20 +146,36 @@ class Attention(nn.Module):
             return (attention_output,)
         
 class Merger(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config, from_user_side=True):
         super().__init__()
         self.config = config 
-
-        self.dense = nn.Linear(2*config.hidden_size, config.hidden_size)
+        
+        if from_user_side:
+            if config.apply_user_item_ids:
+                if config.apply_relation_ids:
+                    self.dense = nn.Linear(2*config.hidden_size+config.id_emb_size+config.relation_emb_size, config.hidden_size)
+                else:
+                    self.dense = nn.Linear(2*config.hidden_size+config.id_emb_size, config.hidden_size)
+            else:
+                self.dense = nn.Linear(2*config.hidden_size, config.hidden_size)
+        else:
+            if config.apply_user_item_ids:
+                self.dense = nn.Linear(config.hidden_size+config.id_emb_size, config.hidden_size)
+            else:
+                raise ValueError("shouldn't have merger laeyer for item embeddings without item_id_embeddings.")
+                
         self.act = ACT2FN[config.seq_output_act_fn]
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
-    def forward(self, hidden_states, input_tensor):
+    def forward(self, hidden_states, input_tensor, id_tensor=None):
         """
         Args:
             hidden_states: with the shape of [L1, D]
         """
-        output_tensor = torch.cat([hidden_states, input_tensor], dim=-1)
+        if id_tensor != None:
+            output_tensor = torch.cat([hidden_states, input_tensor, id_tensor], dim=-1)
+        else:
+            output_tensor = torch.cat([hidden_states, input_tensor], dim=-1)
         output_tensor = self.act(self.dense(output_tensor))
         output_tensor = self.dropout(output_tensor)
         
@@ -182,10 +198,18 @@ class UserSeqMergeEncoder(nn.Module):
             param.requires_grad = model_args.backbone_trainable
 
         self.attention = Attention(model_args)
-        self.merger = Merger(model_args)
+        self.merger = Merger(model_args, from_user_side=True)
 
         # loss_fn
         self.loss_fn = SeqContrastiveLoss()
+        
+        # id embedding
+        if model_args.apply_user_item_ids:
+            self.item_merger = Merger(model_args, from_user_side=False)
+            self.user_embs = nn.Embedding(model_args.num_user, model_args.id_emb_size)
+            self.item_embs = nn.Embedding(model_args.num_item, model_args.id_emb_size)
+            if model_args.apply_relation_ids:
+                self.relation_embs = nn.Embedding(model_args.num_relation, model_args.relation_emb_size)
         
         self.model_args.model_name = "user_seq_merge_encoder"
         
@@ -200,6 +224,10 @@ class UserSeqMergeEncoder(nn.Module):
             id_attention_masks,
             in_batch_mask,
             seq_last_output = False,
+            user_ids = None,
+            relation_ids= None,
+            pos_item_ids = None,
+            neg_item_ids = None,
         ):
         query_outputs = self.query_embs(
                             query_relation, 
@@ -208,10 +236,12 @@ class UserSeqMergeEncoder(nn.Module):
                             seq_lengths, 
                             id_attention_masks, 
                             seq_last_output,
+                            user_ids=user_ids,
+                            relation_ids=relation_ids,
                         )
         query_emb = query_outputs[0] # either be L1xD for training or BxD for inference.
-        passage_emb = self.passage_embs(target_value)
-        neg_passage_emb = self.passage_embs(neg_value)
+        passage_emb = self.passage_embs(target_value, pos_item_ids)
+        neg_passage_emb = self.passage_embs(neg_value, neg_item_ids)
 
         # compute loss 
         loss = self.loss_fn(query_emb, passage_emb, in_batch_mask, neg_passage_emb)
@@ -226,6 +256,8 @@ class UserSeqMergeEncoder(nn.Module):
         seq_lengths,
         id_attention_masks,
         seq_last_output,
+        user_ids = None,
+        relation_ids = None,
     ):  
         if self.model_args.apply_position_embedding:
             query_hidden_states = pad_catted_tensor(
@@ -254,7 +286,17 @@ class UserSeqMergeEncoder(nn.Module):
 
         attention_output = cat_padded_tensor(attention_outputs[0], seq_lengths) # BxLxD --> L1xD where L1 = sum(seq_lengths)
         query_hidden_states = cat_padded_tensor(query_hidden_states, seq_lengths)
-        merger_output = self.merger(attention_output, query_hidden_states)
+        
+        if self.model_args.apply_user_item_ids:
+            if self.model_args.apply_relation_ids:
+                merger_output = self.merger(
+                    attention_output, 
+                    query_hidden_states, 
+                    torch.cat([self.user_embs(user_ids), self.relation_embs(relation_ids)], dim=-1))
+            else:
+                merger_output = self.merger(attention_output, query_hidden_states, self.user_embs(user_ids))
+        else:
+            merger_output = self.merger(attention_output, query_hidden_states)
         
         if seq_last_output:
             merger_output = get_seq_last_output(merger_output, seq_lengths)  # BxD. for inference
@@ -266,11 +308,15 @@ class UserSeqMergeEncoder(nn.Module):
     def passage_embs(
         self,
         value,
+        item_ids=None
     ):
         if self.model_args.apply_value_layer_for_passage_emb:
             value_hidden_states = self.attention.self.value(self.backbone.passage_embs(value))
         else:
             value_hidden_states = self.backbone.passage_embs(value) # L1xD or BxD
+        
+        if self.model_args.apply_user_item_ids:
+            value_hidden_states = self.item_merger(value_hidden_states, self.item_embs(item_ids))
         return value_hidden_states
 
     @classmethod

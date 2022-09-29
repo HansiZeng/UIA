@@ -204,7 +204,11 @@ def train(args, model_args):
                     neg_value=batch["neg_value"],
                     seq_lengths=batch["seq_lengths"],
                     id_attention_masks=batch["id_attention_masks"],
-                    in_batch_mask=batch["in_batch_mask"])
+                    in_batch_mask=batch["in_batch_mask"],
+                    user_ids=batch["user_ids"],
+                    relation_ids=batch["relation_ids"],
+                    pos_item_ids=batch["target_value_ids"],
+                    neg_item_ids=batch["neg_value_ids"])
             if args.use_fp16:
                 scaler.scale(loss).backward()
 

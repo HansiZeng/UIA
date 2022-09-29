@@ -31,6 +31,10 @@ class MergerModelArguments:
     apply_position_embedding: bool = field(default=False)
     apply_value_layer_for_passage_emb: bool = field(default=False)
     apply_zero_attention: bool = field(default=False)
+    apply_user_item_ids: bool = field(default=False)
+    apply_relation_ids: bool = field(default=False)
+    id_emb_size: int = field(default=128)
+    relation_emb_size: int = field(default=64)
     
     seq_output_act_fn: str = field(default="gelu")
     backbone_path: str = field(
@@ -40,6 +44,9 @@ class MergerModelArguments:
     num_attention_heads: int = field(default=12)
     hidden_dropout_prob: float = field(default=0.1)
     attention_probs_dropout_prob: float = field(default=0.1)
+    num_user: int = field(default=893619)
+    num_item: int = field(default=2260878)
+    num_relation: int = field(default=3)
 
     layer_norm_eps: float = field(default=1e-12)
     max_position_embeddeings: int = field(default=14)
