@@ -7,7 +7,7 @@ import torch.nn as nn
 from transformers import (AutoTokenizer, AutoModel, AdamW, get_linear_schedule_with_warmup)
 from losses import ContrastiveLoss
 
-class DualEncoder(nn.Module):
+class BaseDualEncoder(nn.Module):
     def __init__(self, model_args, add_pooling_layer = False):
         super().__init__()
         self.model_args = model_args
@@ -17,9 +17,9 @@ class DualEncoder(nn.Module):
         self.independent_encoders = self.model_args.independent_encoders
         
         
-        self.bert = AutoModel.from_pretrained(self.model_name_or_path, add_pooling_layer=add_pooling_layer)
+        self.bert = AutoModel.from_pretrained(self.model_name_or_path)
         if self.independent_encoders:
-            self.query_bert = AutoModel.from_pretrained(self.model_name_or_path, add_pooling_layer=add_pooling_layer)
+            self.query_bert = AutoModel.from_pretrained(self.model_name_or_path)
         else:
             self.query_bert = self.bert
         
@@ -42,15 +42,19 @@ class DualEncoder(nn.Module):
         return logits
 
     def query_embs(self, queries):
+        #print(queries)
         if self.independent_encoders:
-            query_reps = self.query_bert(**queries).last_hidden_state[:, 0]
+            query_reps = self.query_bert(input_ids=queries['input_ids'], 
+                                         attention_mask=queries['attention_mask']).last_hidden_state[:, 0]
         else:
-            query_reps = self.bert(**queries).last_hidden_state[:, 0]
+            query_reps = self.bert(input_ids=queries['input_ids'], 
+                                   attention_mask=queries['attention_mask']).last_hidden_state[:, 0]
 
         return query_reps
 
     def passage_embs(self, passages):
-        passage_reps = self.bert(**passages).last_hidden_state[:,0]
+        #print(passages)
+        passage_reps = self.bert(input_ids=passages['input_ids'], attention_mask=passages['attention_mask']).last_hidden_state[:,0]
 
         return passage_reps
 
@@ -97,7 +101,7 @@ class DualEncoder(nn.Module):
     
     
         
-class ContrastiveDualEncoder(DualEncoder):
+class ContrastiveDualEncoder(BaseDualEncoder):
     def __init__(self, model_args):
         super().__init__(model_args)
         self.loss_fn = ContrastiveLoss()
@@ -115,6 +119,3 @@ class ContrastiveDualEncoder(DualEncoder):
         passage_reps = passage_reps.view(bz*nway, dim)
         
         return self.loss_fn(query_reps, passage_reps)
-
-          
-    

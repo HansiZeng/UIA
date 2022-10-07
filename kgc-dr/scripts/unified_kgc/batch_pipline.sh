@@ -79,6 +79,6 @@ python evaluation/retrieval_evaluator.py --qrels_path=$COMPL_ARELS_PATH --rankin
 echo "================================================ search ================================================" >> $TMP_RECORD
 python evaluation/retrieval_evaluator.py --qrels_path=$QRELS_PATH --ranking_path=${OUTPUT_PATH}.test.query.small.run >> $TMP_RECORD
 
-echo " " >> >> $TMP_RECORD
+echo " " >>  $TMP_RECORD
 fi
 done

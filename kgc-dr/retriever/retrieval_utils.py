@@ -30,7 +30,7 @@ def batch_to_device(batch, target_device: torch.device):
     return batch
 
 def write_embeddings_to_disk(model, dataloader, use_fp16, rank_idx, write_freq, index_dir,
-                                distributed_model=True):
+                                distributed_model=True, unified_kgc=False):
     embeddings = []
     embeddings_ids = []
     model.eval()
@@ -41,10 +41,15 @@ def write_embeddings_to_disk(model, dataloader, use_fp16, rank_idx, write_freq, 
         with torch.no_grad():
             with torch.cuda.amp.autocast(enabled=use_fp16):
                 batch = batch_to_cuda(batch)
-                inputs = {
-                    "value": batch["seq"],
-                    "item_ids": torch.LongTensor(batch["id"]).cuda()
-                }
+                if unified_kgc:
+                    inputs = {
+                        "passages": batch["seq"]
+                    }
+                else:
+                    inputs = {
+                        "value": batch["seq"],
+                        "item_ids": torch.LongTensor(batch["id"]).cuda()
+                    }
                 if distributed_model:
                     reps = model.module.passage_embs(**inputs)
                 else:

@@ -40,6 +40,7 @@ class UserSequentialDataset(Dataset):
         if self.is_train:
             target_value_texts = [self.eid_to_text[eid] for eid in example["target_value_ids"]]
             neg_value_texts = [self.eid_to_text[eid] for eid in example["neg_value_ids"]]
+            
             return {
                 "uid": example["uid"],
                 "query_ids": example["query_ids"],
@@ -49,7 +50,7 @@ class UserSequentialDataset(Dataset):
                 "context_key_texts": context_key_texts,
                 "context_value_texts": context_value_texts,
                 
-                "relation": example["relation"],
+                "relation": example["relation"] if "relation" in example else example["relations"],
 
                 "target_value_ids": example["target_value_ids"],
                 "neg_value_ids": example["neg_value_ids"],
@@ -66,7 +67,7 @@ class UserSequentialDataset(Dataset):
                 "context_key_texts": context_key_texts,
                 "context_value_texts": context_value_texts,
                 
-                "relation": example["relation"],
+                "relation": example["relation"] if "relation" in example else example["relations"],
             }
 
 
@@ -113,13 +114,18 @@ class UserSequentialDataset(Dataset):
         for elem in batch:
             uids.append(elem["uid"])
             user_ids.extend([elem["uid"]]*len(elem["query_ids"]))
-            relation_ids.extend([RELATION_TO_RELID[elem["relation"]]]*len(elem["query_ids"]))
             query_ids += elem["query_ids"]
             context_key_ids += elem["context_key_ids"]
             context_value_ids += elem["context_value_ids"]
             
             assert len(elem["query_ids"]) == len(elem["context_key_ids"]) == len(elem["context_value_ids"])
-            relations += [elem["relation"]] * len(elem["query_ids"]) 
+            if type(elem["relation"]) != list:
+                relation_ids.extend([RELATION_TO_RELID[elem["relation"]]]*len(elem["query_ids"]))
+                relations += [elem["relation"]] * len(elem["query_ids"]) 
+            else:
+                assert len(elem["relation"]) == len(elem["query_ids"])
+                relation_ids.extend([RELATION_TO_RELID[rel] for rel in elem["relation"]])
+                relations += elem["relation"]
             seq_lengths.append(len(elem["query_ids"]) )
 
             query_texts += elem["query_texts"]

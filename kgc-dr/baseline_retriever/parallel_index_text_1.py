@@ -23,10 +23,10 @@ from transformers import AutoTokenizer, AutoModel, HfArgumentParser
 import torch.distributed as dist
 import ujson 
 
-from modeling.dual_encoder import DualEncoder
+from modeling.baseline_dual_encoder import BaseDualEncoder as DualEncoder
 from retriever.retrieval_utils import write_embeddings_to_disk
 from dataset import KGCSequenceDataset
-from arguments import RetrievalArguments
+from arguments import RetrievalArguments, ModelArguments
 
 
 BLOCK_SIZE = 50_000
@@ -45,21 +45,21 @@ def set_env(args):
         args.device = torch.device("cuda")
 
 def get_args():
-    parser = HfArgumentParser(RetrievalArguments)
-    args = parser.parse_args_into_dataclasses()
-    assert len(args) == 1
-    args = args[0]
+    parser = HfArgumentParser((RetrievalArguments, ModelArguments))
+    args, model_args = parser.parse_args_into_dataclasses()
+    #assert len(args) == 1
+    #args = args[0]
     
     if args.local_rank < 1:
         if not os.path.exists(args.index_dir):
             os.mkdir(args.index_dir)
 
-    return args
+    return args, model_args
 
-def main(args):
+def main(args, model_args):
     # for model
-    assert os.path.isdir(args.pretrained_path), args.pretrained_path
-    model = DualEncoder.from_pretrained(args.pretrained_path)
+    #assert os.path.isdir(args.pretrained_path), args.pretrained_path
+    model = DualEncoder(model_args)
     model.cuda()
     if args.distributed:
         model = torch.nn.parallel.DistributedDataParallel(model,
@@ -67,8 +67,7 @@ def main(args):
                                                             output_device=args.local_rank)
 
     # index path
-    index_path = Path(args.pretrained_path).stem.split(".")[0] + ".index" 
-    index_path = os.path.join(args.index_dir, index_path)
+    index_path = os.path.join(args.index_dir, "tasb.index")
 
     # for dataset
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name_or_path)
@@ -90,9 +89,9 @@ def main(args):
     plan = {"nranks": args.nranks, "num_chunks": num_chunks, "index_path": index_path}
     with open(os.path.join(args.index_dir, "plan.json"), "w") as fout:
         ujson.dump(plan, fout)
-    
+
 
 if __name__ == "__main__":
-    args = get_args()
+    args, model_args = get_args()
     set_env(args)
-    main(args)
+    main(args, model_args)

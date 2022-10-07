@@ -36,7 +36,8 @@ python -m torch.distributed.launch --nproc_per_node=4 retriever/parallel_index_t
                                     --passages_path=$PASSAGE_PATH \
                                     --index_dir=$INDEX_DIR \
                                     --batch_size=128 \
-                                    --max_length=256
+                                    --max_length=256 \
+                                    --tokenizer_name_or_path="sentence-transformers/msmarco-bert-base-dot-v5" 
 
 python retriever/parallel_index_text_2.py --pretrained_path=$PRETRAINED_PATH \
                                 --passages_path=$PASSAGE_PATH \
@@ -52,7 +53,8 @@ python retriever/retrieve_top_passages.py \
 --output_path=${OUTPUT_PATH}.test.sim.small.run \
 --index_path=$INDEX_PATH \
 --batch_size=512 \
---query_max_len=128
+--query_max_len=128 \
+--tokenizer_name_or_path="sentence-transformers/msmarco-bert-base-dot-v5" 
 
 python retriever/retrieve_top_passages.py \
 --queries_path=$COMPL_ANCHORS_PATH \
@@ -60,7 +62,8 @@ python retriever/retrieve_top_passages.py \
 --output_path=${OUTPUT_PATH}.test.compl.run \
 --index_path=$INDEX_PATH \
 --batch_size=512 \
---query_max_len=128
+--query_max_len=128 \
+--tokenizer_name_or_path="sentence-transformers/msmarco-bert-base-dot-v5"
 
 python retriever/retrieve_top_passages.py \
 --queries_path=$QUERIES_PATH \
@@ -68,7 +71,8 @@ python retriever/retrieve_top_passages.py \
 --output_path=${OUTPUT_PATH}.test.query.small.run \
 --index_path=$INDEX_PATH \
 --batch_size=512 \
---query_max_len=128
+--query_max_len=128 \
+--tokenizer_name_or_path="sentence-transformers/msmarco-bert-base-dot-v5"
 
 # 3, evaluation
 echo "================================================ similar rec ================================================" >> $TMP_RECORD

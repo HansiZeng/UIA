@@ -1,7 +1,7 @@
 #!/bin/bash 
 
-experiment_folder="/home/jupyter/unity_jointly_rec_and_search/experiments/amazon_esci/task2/"
-model_name="phase_2/experiment_09-21_102244"
+experiment_folder="/home/jupyter/unity_jointly_rec_and_search/experiments/amazon_esci/task2/phase_dot-v5"
+model_name="experiment_10-05_032456"
 pretrained_path="${experiment_folder}/${model_name}/models/checkpoint_latest"
 t_a2sp_path="${experiment_folder}/${model_name}/self_train/a2s.50.train.tsv"
 t_a2cp_path="${experiment_folder}/${model_name}/self_train/a2c.train.tsv"
@@ -42,6 +42,7 @@ do
                         --max_head_text_len=128 \
                         --max_tail_text_len=128 \
                         --max_global_steps=100000000 \
-                        --model_pretrained_path=$pretrained_path
+                        --model_pretrained_path=$pretrained_path \
+                        --tokenizer_name_or_path="sentence-transformers/msmarco-bert-base-dot-v5" 
     done
 done
