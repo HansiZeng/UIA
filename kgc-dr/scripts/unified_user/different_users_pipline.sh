@@ -20,7 +20,7 @@ echo "queries path: ${QUERIES_PATH}" >> $TMP_RECORD
 
 DATES=($(ls "${EXPERIMENT_FORDER}"))
 
-for i in {0..4}
+for i in {1..4}
 do
 echo "current group: $i"
 
@@ -39,7 +39,7 @@ python retriever/user_retrieve_top_passages.py \
 --pretrained_path=$PRETRAINED_PATH \
 --output_path=${OUTPUT_PATH}.search.small.test.run \
 --index_path=$INDEX_PATH \
---batch_size=32 \
+--batch_size=128 \
 --max_length=128
 
 python retriever/user_retrieve_top_passages.py \
@@ -48,7 +48,7 @@ python retriever/user_retrieve_top_passages.py \
 --pretrained_path=$PRETRAINED_PATH \
 --output_path=${OUTPUT_PATH}.sim.small.test.run \
 --index_path=$INDEX_PATH \
---batch_size=32 \
+--batch_size=128 \
 --max_length=128
 
 python retriever/user_retrieve_top_passages.py \
@@ -57,8 +57,9 @@ python retriever/user_retrieve_top_passages.py \
 --pretrained_path=$PRETRAINED_PATH \
 --output_path=${OUTPUT_PATH}.compl.small.test.run \
 --index_path=$INDEX_PATH \
---batch_size=32 \
+--batch_size=128 \
 --max_length=128
+
 
 # 3, evaluation
 echo "================================================ search ================================================" >> $TMP_RECORD

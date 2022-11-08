@@ -7,6 +7,7 @@ backbone_path="/home/jupyter/unity_jointly_rec_and_search/experiments/unified_kg
 
 #exp_paths=("${home_prefix}/datasets/unified_user/mixture_sequential_train_test/hlen_4_bm25/search_sequential.train.json" "${home_prefix}/datasets/unified_user/mixture_sequential_train_test/hlen_4_bm25/sim_rec_sequential.train.json" "${home_prefix}/datasets/unified_user/mixture_sequential_train_test/hlen_4_bm25/compl_rec_sequential.train.json")
 exp_paths=("${home_prefix}/datasets/unified_user/mixture_sequential_train_test/hlen_4_bm25/search_sim_compl_sequential.train.json")
+#exp_paths=("${home_prefix}/datasets/unified_user/mixture_sequential_train_test/hlen_4_bm25/no_intent_search_compl_seqential.train.json")
 lrs=(7e-5)
 neps=(8)
 
