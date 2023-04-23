@@ -1,11 +1,9 @@
 # not included folder 
-experiments/
-runs/
-datasets/
-indexes/
-pretrained_models/
-preprocess/rec_compl/data/
-preprocess/rec_compl/dataset/
+/experiments/
+/datasets/
+/analysis/
+/preprocess/legacy/
+/preprocess/unified_user/zero_shot/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
