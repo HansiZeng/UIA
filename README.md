@@ -1,34 +1,13 @@
-Repo for Lowes project "joint modeling of recommendation and search systems".
+# A Personalized Dense Retrieval Framework for Unified Information Access (UIA)
+Hansi Zeng, Surya Kallumadi, Zaid Alibadi, Rodrigo Nogueira, Hamed Zamani
 
-### Structure 
+This repo provides source code for the SIGIR'23 paper: [A Personalized Dense Retrieval Framework for
+Unified Information Access](). 
 
-``` bash
-.
-│── preprocess/unified_kgc  # the following 3 files in the folder is for data preprocess.      
-│    │─── preprocess.ipynb
-│    │─── b25_all.sh
-│    └─── create_unified_train.ipynb
-│   
-│── kgc-dr 
-│    │─── trainer/unified_train.py # this file and the following 2 files are for training.        
-│    │─── dataset/kgc_triple_dataset.py         
-│    │─── modeling/dual_encoder.py
-│    │
-│    │─── retriever/parallel_index_text_1.py # this file and the following 3 files are for testing.
-│    │─── retriever/parallel_index_text_2.py  
-│    │─── retriever/retrieve_top_passages.py  
-│    │─── evaluation/retriever_evaluator.py  
-│    │
-│    └─── scripts/unified_kgc # the folder contain the scripts for training and testing.
-│            │─── batch_unified_comb_train.sh
-│            └─── batch_unified_pipline.sh 
-│    
-└─── ...
-```
+Developing a universal model that can efficiently and effectively respond to a wide range of information access requests—from retrieval to recommendation to question answering—has been a long-lasting goal in the information retrieval community. This paper argues that the flexibility, efficiency, and effectiveness brought by the recent development in dense retrieval and approximate nearest neighbor search have smoothed the path towards achieving this goal. We develop a generic and extensible dense retrieval framework, called UIA, that can handle a wide range of (personalized)
+information access requests, such as keyword search, query by example, and complementary item recommendation. Our proposed approach extends the capabilities of dense retrieval models for ad-hoc retrieval tasks by incorporating user-specific preferences through the development of a personalized attentive network. This allows for a more tailored and accurate personalized information access experience. Our experiments on real-world e-commerce data
+suggest the feasibility of developing universal information access models by demonstrating significant improvements even compared to competitive baselines specifically developed for each of these individual information access tasks. This work opens up a number of fundamental research directions for future exploration
 
-### Workflow
-- For preprocessing the dataset, run the following files in order (Note that all this files are located in the preprocess/unified_kgc folder):
-  ``` preprocess/unified_kgc/preprocess.ipynb --> preprocess/unified_kgc/bm25_all.sh --> preprocess/unified_kgc/create_unified_train.ipynb ```
-  After preprocessing, all files for training and testing should be located in the new created foloder: ```datasets/unified_kgc/```
-- For training the model, your can go to the folder ```scripts/unified_kgc``` and run the script: ```batch_unified_comb_train.sh```
-- After your model trained, you can test your model performance by runing the script: ```batch_unified_comb_train.sh``` which is also located in the folder ```scripts/unified_kgc```. Note that this script, automatically (1) index the collection; (2) retrieve the top documents; (3) compute and ouput the result sequentially. After running the script, you should see the result of the trained model. 
+<p align="center">
+  <img align="center" src="https://github.com/HansiZeng/UIA/blob/main/architecture.png" width="850" />
+</p>
